@@ -1,0 +1,12 @@
+# Host CMake build (CLion-generated)
+/cmake-build-debug/
+
+# ESP-IDF firmware build
+/firmware/build/
+/firmware/sdkconfig
+/firmware/sdkconfig.old
+/firmware/managed_components/
+/firmware/dependencies.lock
+/firmware/.cache/
+
+.idea/
