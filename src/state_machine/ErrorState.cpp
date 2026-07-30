@@ -15,6 +15,7 @@ void ErrorState::enter(Node& node)
 
 void ErrorState::process(Node& node)
 {
+    node.getLogger().error("Node entered Error state - retrying from Init");
     node.transitionTo(InitState::getInstance());
 }
 

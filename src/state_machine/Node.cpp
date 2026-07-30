@@ -1,8 +1,8 @@
 #include "Node.h"
 
-Node::Node(Sensor& sensor, Publisher& publisher, Clock& clock, NodeState& initialState) : sensor_{sensor},
+Node::Node(Sensor& sensor, Publisher& publisher, Clock& clock, Logger& logger, NodeState& initialState) : sensor_{sensor},
     publisher_{publisher},
-    clock_{clock}, state_{&initialState}
+    clock_{clock}, logger_{logger}, state_{&initialState}
 {
 }
 
@@ -36,6 +36,11 @@ Publisher& Node::getPublisher() const
 Clock& Node::getClock() const
 {
     return clock_;
+}
+
+Logger& Node::getLogger() const
+{
+    return logger_;
 }
 
 const Measurement& Node::getMeasurement() const

@@ -1,5 +1,6 @@
 #include "IdleState.h"
 #include "Node.h"
+#include "ReadingState.h"
 
 IdleState& IdleState::getInstance()
 {
@@ -13,7 +14,10 @@ void IdleState::enter(Node& node)
 
 void IdleState::process(Node& node)
 {
-    node.getSensor().isDataReady();
+    if (node.getSensor().isDataReady())
+    {
+        node.transitionTo(ReadingState::getInstance());
+    }
 }
 
 void IdleState::exit(Node& node)

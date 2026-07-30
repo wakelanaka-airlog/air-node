@@ -2,6 +2,7 @@
 
 #include "IdleState.h"
 #include "Node.h"
+#include "ReadingState.h"
 
 namespace
 {
@@ -28,6 +29,14 @@ namespace
         bool isDataReadyResult = false;
     };
 
+    class StubLogger : public Logger
+    {
+    public:
+        void error(const char*) override
+        {
+        }
+    };
+
     class StubPublisher : public Publisher
     {
     public:
@@ -52,9 +61,38 @@ TEST(IdleStateTest, ProcessChecksDataReady)
     FakeSensor sensor;
     StubPublisher publisher;
     StubClock clock;
-    Node node(sensor, publisher, clock, IdleState::getInstance());
+    StubLogger logger;
+    Node node(sensor, publisher, clock, logger, IdleState::getInstance());
 
     node.process();
 
     EXPECT_EQ(sensor.isDataReadyCount, 1);
+}
+
+TEST(IdleStateTest, ProcessTransitionsToReadingWhenDataIsReady)
+{
+    FakeSensor sensor;
+    StubPublisher publisher;
+    StubClock clock;
+    StubLogger logger;
+    sensor.isDataReadyResult = true;
+    Node node(sensor, publisher, clock, logger, IdleState::getInstance());
+
+    node.process();
+
+    EXPECT_EQ(node.getState(), &ReadingState::getInstance());
+}
+
+TEST(IdleStateTest, ProcessStaysInIdleWhenDataIsNotReady)
+{
+    FakeSensor sensor;
+    StubPublisher publisher;
+    StubClock clock;
+    StubLogger logger;
+    sensor.isDataReadyResult = false;
+    Node node(sensor, publisher, clock, logger, IdleState::getInstance());
+
+    node.process();
+
+    EXPECT_EQ(node.getState(), &IdleState::getInstance());
 }

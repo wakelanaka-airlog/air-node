@@ -2,10 +2,17 @@
 
 #include <cstdio>
 
+namespace
+{
+    constexpr uint32_t kPublishAckTimeoutMs = 5000;
+}
+
 MqttPublisher::MqttPublisher(const char* brokerUri, const char* username, const char* password,
                              std::string topic, std::string room)
     : topic_{std::move(topic)}, room_{std::move(room)}
 {
+    publishAcked_ = xSemaphoreCreateBinary();
+
     esp_mqtt_client_config_t mqttConfig = {};
     mqttConfig.broker.address.uri = brokerUri;
     mqttConfig.credentials.username = username;
@@ -20,9 +27,10 @@ MqttPublisher::~MqttPublisher()
 {
     esp_mqtt_client_stop(client_);
     esp_mqtt_client_destroy(client_);
+    vSemaphoreDelete(publishAcked_);
 }
 
-void MqttPublisher::handleMqttEvent(void* handlerArgs, esp_event_base_t, int32_t eventId, void*)
+void MqttPublisher::handleMqttEvent(void* handlerArgs, esp_event_base_t, int32_t eventId, void* eventData)
 {
     auto* self = static_cast<MqttPublisher*>(handlerArgs);
     switch (static_cast<esp_mqtt_event_id_t>(eventId))
@@ -33,6 +41,15 @@ void MqttPublisher::handleMqttEvent(void* handlerArgs, esp_event_base_t, int32_t
     case MQTT_EVENT_DISCONNECTED:
         self->connected_ = false;
         break;
+    case MQTT_EVENT_PUBLISHED:
+        {
+            auto* event = static_cast<esp_mqtt_event_handle_t>(eventData);
+            if (event->msg_id == self->pendingMsgId_)
+            {
+                xSemaphoreGive(self->publishAcked_);
+            }
+            break;
+        }
     default:
         break;
     }
@@ -51,6 +68,13 @@ bool MqttPublisher::publish(const Measurement& measurement)
                                 room_.c_str(), static_cast<unsigned long long>(measurement.timestampUnixMillis),
                                 measurement.co2Ppm, measurement.temperatureCelsius, measurement.humidityPercent);
 
-    const int messageId = esp_mqtt_client_publish(client_, topic_.c_str(), payload, length, 1, 0);
-    return messageId != -1;
+    xSemaphoreTake(publishAcked_, 0);
+
+    pendingMsgId_ = esp_mqtt_client_publish(client_, topic_.c_str(), payload, length, 1, 0);
+    if (pendingMsgId_ == -1)
+    {
+        return false;
+    }
+
+    return xSemaphoreTake(publishAcked_, pdMS_TO_TICKS(kPublishAckTimeoutMs)) == pdTRUE;
 }

@@ -41,6 +41,14 @@ namespace
         Measurement lastMeasurement{};
     };
 
+    class StubLogger : public Logger
+    {
+    public:
+        void error(const char*) override
+        {
+        }
+    };
+
     class StubClock : public Clock
     {
     public:
@@ -56,7 +64,8 @@ TEST(SendingStateTest, ProcessPublishesMeasurement)
     StubSensor sensor;
     FakePublisher publisher;
     StubClock clock;
-    Node node(sensor, publisher, clock, SendingState::getInstance());
+    StubLogger logger;
+    Node node(sensor, publisher, clock, logger, SendingState::getInstance());
     node.setMeasurement(Measurement{1738156800000ULL, 404, 25.0f, 50.0f});
 
     node.process();
@@ -73,8 +82,9 @@ TEST(SendingStateTest, ProcessTransitionsToIdleOnPublishSuccess)
     StubSensor sensor;
     FakePublisher publisher;
     StubClock clock;
+    StubLogger logger;
     publisher.publishResult = true;
-    Node node(sensor, publisher, clock, SendingState::getInstance());
+    Node node(sensor, publisher, clock, logger, SendingState::getInstance());
 
     node.process();
 
@@ -86,8 +96,9 @@ TEST(SendingStateTest, ProcessTransitionsToErrorOnPublishFailure)
     StubSensor sensor;
     FakePublisher publisher;
     StubClock clock;
+    StubLogger logger;
     publisher.publishResult = false;
-    Node node(sensor, publisher, clock, SendingState::getInstance());
+    Node node(sensor, publisher, clock, logger, SendingState::getInstance());
 
     node.process();
 

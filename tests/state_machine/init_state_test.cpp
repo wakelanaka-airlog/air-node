@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "ErrorState.h"
 #include "IdleState.h"
 #include "InitState.h"
 #include "Node.h"
@@ -29,6 +30,14 @@ namespace
         bool startPeriodicMeasurementResult = true;
     };
 
+    class StubLogger : public Logger
+    {
+    public:
+        void error(const char*) override
+        {
+        }
+    };
+
     class StubPublisher : public Publisher
     {
     public:
@@ -53,7 +62,8 @@ TEST(InitStateTest, ProcessStartsPeriodicMeasurement)
     FakeSensor sensor;
     StubPublisher publisher;
     StubClock clock;
-    Node node(sensor, publisher, clock, InitState::getInstance());
+    StubLogger logger;
+    Node node(sensor, publisher, clock, logger, InitState::getInstance());
 
     node.process();
 
@@ -65,10 +75,25 @@ TEST(InitStateTest, ProcessTransitionsToIdleOnSuccess)
     FakeSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     sensor.startPeriodicMeasurementResult = true;
-    Node node(sensor, publisher, clock, InitState::getInstance());
+    Node node(sensor, publisher, clock, logger, InitState::getInstance());
 
     node.process();
 
     EXPECT_EQ(node.getState(), &IdleState::getInstance());
+}
+
+TEST(InitStateTest, ProcessTransitionsToErrorOnFailure)
+{
+    FakeSensor sensor;
+    StubPublisher publisher;
+    StubClock clock;
+    StubLogger logger;
+    sensor.startPeriodicMeasurementResult = false;
+    Node node(sensor, publisher, clock, logger, InitState::getInstance());
+
+    node.process();
+
+    EXPECT_EQ(node.getState(), &ErrorState::getInstance());
 }

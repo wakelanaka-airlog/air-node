@@ -1,4 +1,6 @@
 #include "InitState.h"
+
+#include "ErrorState.h"
 #include "IdleState.h"
 #include "Node.h"
 
@@ -18,6 +20,12 @@ void InitState::exit(Node& node)
 
 void InitState::process(Node& node)
 {
-    node.getSensor().startPeriodicMeasurement();
-    node.transitionTo(IdleState::getInstance());
+    if (node.getSensor().startPeriodicMeasurement())
+    {
+        node.transitionTo(IdleState::getInstance());
+    }
+    else
+    {
+        node.transitionTo(ErrorState::getInstance());
+    }
 }

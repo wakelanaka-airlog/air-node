@@ -61,6 +61,14 @@ namespace
         }
     };
 
+    class StubLogger : public Logger
+    {
+    public:
+        void error(const char*) override
+        {
+        }
+    };
+
     class TrackingState : public NodeState
     {
     public:
@@ -115,8 +123,9 @@ TEST(NodeTest, CanBeInstantiated)
     StubSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     StubState state;
-    Node node(sensor, publisher, clock, state);
+    Node node(sensor, publisher, clock, logger, state);
     SUCCEED();
 }
 
@@ -125,9 +134,10 @@ TEST(NodeTest, ConstructorSetsInitialState)
     StubSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     StubState state;
 
-    Node node(sensor, publisher, clock, state);
+    Node node(sensor, publisher, clock, logger, state);
 
     EXPECT_EQ(node.getState(), &state);
 }
@@ -137,9 +147,10 @@ TEST(NodeTest, ConstructorSetsSensor)
     StubSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     StubState state;
 
-    Node node(sensor, publisher, clock, state);
+    Node node(sensor, publisher, clock, logger, state);
 
     EXPECT_EQ(&node.getSensor(), &sensor);
 }
@@ -149,9 +160,10 @@ TEST(NodeTest, ConstructorSetsPublisher)
     StubSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     StubState state;
 
-    Node node(sensor, publisher, clock, state);
+    Node node(sensor, publisher, clock, logger, state);
 
     EXPECT_EQ(&node.getPublisher(), &publisher);
 }
@@ -161,9 +173,10 @@ TEST(NodeTest, ConstructorSetsClock)
     StubSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     StubState state;
 
-    Node node(sensor, publisher, clock, state);
+    Node node(sensor, publisher, clock, logger, state);
 
     EXPECT_EQ(&node.getClock(), &clock);
 }
@@ -173,9 +186,10 @@ TEST(NodeTest, ProcessDelegatesToCurrentState)
     StubSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     TrackingState state;
 
-    Node node(sensor, publisher, clock, state);
+    Node node(sensor, publisher, clock, logger, state);
     node.process();
 
     EXPECT_EQ(state.processCount, 1);
@@ -187,8 +201,9 @@ TEST(NodeTest, TransitionToChangesCurrentState)
     StubSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     StubState initialState;
-    Node node(sensor, publisher, clock, initialState);
+    Node node(sensor, publisher, clock, logger, initialState);
 
     StubState newState;
     node.transitionTo(newState);
@@ -201,12 +216,13 @@ TEST(NodeTest, TransitionToCallsExitThenEnter)
     StubSensor sensor;
     StubPublisher publisher;
     StubClock clock;
+    StubLogger logger;
     std::vector<std::string> log;
 
     TrackingState oldState(&log);
     TrackingState newState(&log);
 
-    Node node(sensor, publisher, clock, oldState);
+    Node node(sensor, publisher, clock, logger, oldState);
     node.transitionTo(newState);
 
     EXPECT_EQ(oldState.exitCount, 1);

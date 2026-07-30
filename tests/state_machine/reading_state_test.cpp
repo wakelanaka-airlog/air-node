@@ -40,6 +40,14 @@ namespace
         }
     };
 
+    class StubLogger : public Logger
+    {
+    public:
+        void error(const char*) override
+        {
+        }
+    };
+
     class FakeClock : public Clock
     {
     public:
@@ -57,7 +65,8 @@ TEST(ReadingStateTest, ProcessReadsMeasurement)
     FakeSensor sensor;
     StubPublisher publisher;
     FakeClock clock;
-    Node node(sensor, publisher, clock, ReadingState::getInstance());
+    StubLogger logger;
+    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
 
     node.process();
 
@@ -69,8 +78,9 @@ TEST(ReadingStateTest, ProcessStoresMeasurementOnSuccess)
     FakeSensor sensor;
     StubPublisher publisher;
     FakeClock clock;
+    StubLogger logger;
     sensor.measurementToReturn = Measurement{0, 404, 25.0f, 50.0f};
-    Node node(sensor, publisher, clock, ReadingState::getInstance());
+    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
 
     node.process();
 
@@ -84,10 +94,11 @@ TEST(ReadingStateTest, ProcessStampsMeasurementWithCurrentTime)
     FakeSensor sensor;
     StubPublisher publisher;
     FakeClock clock;
+    StubLogger logger;
     clock.currentTime = 1738156800000ULL;
 
     sensor.measurementToReturn = Measurement{999, 404, 25.0f, 50.0f};
-    Node node(sensor, publisher, clock, ReadingState::getInstance());
+    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
 
     node.process();
 
@@ -99,8 +110,9 @@ TEST(ReadingStateTest, ProcessTransitionsToErrorOnReadFailure)
     FakeSensor sensor;
     StubPublisher publisher;
     FakeClock clock;
+    StubLogger logger;
     sensor.readMeasurementResult = false;
-    Node node(sensor, publisher, clock, ReadingState::getInstance());
+    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
 
     node.process();
 

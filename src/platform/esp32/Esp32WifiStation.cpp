@@ -30,9 +30,11 @@ Esp32WifiStation::Esp32WifiStation(const char* ssid, const char* password)
     esp_wifi_start();
 }
 
-void Esp32WifiStation::waitUntilConnected()
+bool Esp32WifiStation::waitUntilConnected(uint32_t timeoutMs)
 {
-    xEventGroupWaitBits(eventGroup_, kConnectedBit, pdFALSE, pdTRUE, portMAX_DELAY);
+    const EventBits_t bits =
+        xEventGroupWaitBits(eventGroup_, kConnectedBit, pdFALSE, pdTRUE, pdMS_TO_TICKS(timeoutMs));
+    return (bits & kConnectedBit) != 0;
 }
 
 void Esp32WifiStation::handleEvent(void* handlerArgs, esp_event_base_t base, int32_t eventId, void*)

@@ -1,8 +1,9 @@
 #pragma once
 
-#include <cstdint>
 #include <string>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "mqtt_client.h"
 
 #include "Publisher.h"
@@ -26,4 +27,6 @@ private:
     std::string topic_;
     std::string room_;
     bool connected_ = false;
+    SemaphoreHandle_t publishAcked_;
+    int pendingMsgId_ = -1;
 };

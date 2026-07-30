@@ -10,3 +10,4 @@
 /firmware/.cache/
 
 .idea/
+build/

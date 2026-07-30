@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Clock.h"
+#include "Logger.h"
 #include "Measurement.h"
 #include "NodeState.h"
 #include "Publisher.h"
@@ -9,7 +10,7 @@
 class Node
 {
 public:
-    Node(Sensor& sensor, Publisher& publisher, Clock& clock, NodeState& initialState);
+    Node(Sensor& sensor, Publisher& publisher, Clock& clock, Logger& logger, NodeState& initialState);
 
     void process();
     void transitionTo(NodeState& state);
@@ -17,6 +18,7 @@ public:
     [[nodiscard]] Sensor& getSensor() const;
     [[nodiscard]] Publisher& getPublisher() const;
     [[nodiscard]] Clock& getClock() const;
+    [[nodiscard]] Logger& getLogger() const;
     void setMeasurement(const Measurement& measurement);
     [[nodiscard]] const Measurement& getMeasurement() const;
 
@@ -24,6 +26,7 @@ private:
     Sensor& sensor_;
     Publisher& publisher_;
     Clock& clock_;
+    Logger& logger_;
     NodeState* state_{};
     Measurement measurement_{};
 };
