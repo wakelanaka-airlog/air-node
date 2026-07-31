@@ -48,12 +48,20 @@ namespace
     class FakeLogger : public Logger
     {
     public:
+        void info(const char* message) override
+        {
+            ++infoCount;
+            lastInfoMessage = message ? message : "";
+        }
+
         void error(const char* message) override
         {
             ++errorCount;
             lastMessage = message ? message : "";
         }
 
+        int infoCount = 0;
+        std::string lastInfoMessage;
         int errorCount = 0;
         std::string lastMessage;
     };
@@ -84,4 +92,32 @@ TEST(ErrorStateTest, ProcessLogsAnError)
 
     EXPECT_EQ(logger.errorCount, 1);
     EXPECT_FALSE(logger.lastMessage.empty());
+}
+
+TEST(ErrorStateTest, EnterLogsInfo)
+{
+    StubSensor sensor;
+    StubPublisher publisher;
+    StubClock clock;
+    FakeLogger logger;
+    Node node(sensor, publisher, clock, logger, ErrorState::getInstance());
+
+    ErrorState::getInstance().enter(node);
+
+    EXPECT_EQ(logger.infoCount, 1);
+    EXPECT_FALSE(logger.lastInfoMessage.empty());
+}
+
+TEST(ErrorStateTest, ExitLogsInfo)
+{
+    StubSensor sensor;
+    StubPublisher publisher;
+    StubClock clock;
+    FakeLogger logger;
+    Node node(sensor, publisher, clock, logger, ErrorState::getInstance());
+
+    ErrorState::getInstance().exit(node);
+
+    EXPECT_EQ(logger.infoCount, 1);
+    EXPECT_FALSE(logger.lastInfoMessage.empty());
 }

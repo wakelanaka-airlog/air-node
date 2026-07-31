@@ -6,4 +6,6 @@ class Esp32Logger : public Logger
 {
 public:
     void error(const char* message) override;
+
+    void info(const char* message) override;
 };

@@ -10,6 +10,7 @@ IdleState& IdleState::getInstance()
 
 void IdleState::enter(Node& node)
 {
+    node.getLogger().info("Entering IdleState");
 }
 
 void IdleState::process(Node& node)
@@ -22,4 +23,5 @@ void IdleState::process(Node& node)
 
 void IdleState::exit(Node& node)
 {
+    node.getLogger().info("Exit IdleState");
 }

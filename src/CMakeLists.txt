@@ -16,7 +16,9 @@ if(SENSOR_NODE_SOURCES)
     )
 else()
     # No production sources yet.
-    add_library(sensor_node INTERFACE)
+    add_library(sensor_node INTERFACE
+            logging/FilteringLogger.cpp
+            logging/FilteringLogger.h)
     target_include_directories(sensor_node INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/state_machine

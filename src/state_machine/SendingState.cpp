@@ -12,6 +12,7 @@ SendingState& SendingState::getInstance()
 
 void SendingState::enter(Node& node)
 {
+    node.getLogger().info("Entering SendingState");
 }
 
 void SendingState::process(Node& node)
@@ -26,4 +27,5 @@ void SendingState::process(Node& node)
 
 void SendingState::exit(Node& node)
 {
+    node.getLogger().info("Exit SendingState");
 }

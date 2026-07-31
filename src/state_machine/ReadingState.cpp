@@ -13,6 +13,7 @@ ReadingState& ReadingState::getInstance()
 
 void ReadingState::enter(Node& node)
 {
+    node.getLogger().info("Entering ReadingState");
 }
 
 void ReadingState::process(Node& node)
@@ -31,4 +32,5 @@ void ReadingState::process(Node& node)
 
 void ReadingState::exit(Node& node)
 {
+    node.getLogger().info("Exit ReadingState");
 }

@@ -28,4 +28,8 @@ menu "wakelanaka-airlog Node Configuration"
         string "SNTP server for time sync"
         default "pool.ntp.org"
 
+    config NODE_DEVELOPMENT_MODE
+        bool "Enable development mode (verbose logging)"
+        default n
+
 endmenu

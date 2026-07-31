@@ -11,6 +11,7 @@ ErrorState& ErrorState::getInstance()
 
 void ErrorState::enter(Node& node)
 {
+    node.getLogger().info("Entering ErrorState");
 }
 
 void ErrorState::process(Node& node)
@@ -21,4 +22,5 @@ void ErrorState::process(Node& node)
 
 void ErrorState::exit(Node& node)
 {
+    node.getLogger().info("Exit ErrorState");
 }

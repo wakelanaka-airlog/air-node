@@ -64,6 +64,10 @@ namespace
     class StubLogger : public Logger
     {
     public:
+        void info(const char*) override
+        {
+        }
+
         void error(const char*) override
         {
         }

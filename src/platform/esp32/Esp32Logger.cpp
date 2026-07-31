@@ -11,3 +11,8 @@ void Esp32Logger::error(const char* message)
 {
     ESP_LOGE(kTag, "%s", message);
 }
+
+void Esp32Logger::info(const char* message)
+{
+    ESP_LOGI(kTag, "%s", message);
+}

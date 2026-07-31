@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include "ErrorState.h"
 #include "IdleState.h"
 #include "Node.h"
@@ -44,9 +46,30 @@ namespace
     class StubLogger : public Logger
     {
     public:
+        void info(const char*) override
+        {
+        }
+
         void error(const char*) override
         {
         }
+    };
+
+    class FakeLogger : public Logger
+    {
+    public:
+        void info(const char* message) override
+        {
+            ++infoCount;
+            lastInfoMessage = message ? message : "";
+        }
+
+        void error(const char*) override
+        {
+        }
+
+        int infoCount = 0;
+        std::string lastInfoMessage;
     };
 
     class StubClock : public Clock
@@ -103,4 +126,32 @@ TEST(SendingStateTest, ProcessTransitionsToErrorOnPublishFailure)
     node.process();
 
     EXPECT_EQ(node.getState(), &ErrorState::getInstance());
+}
+
+TEST(SendingStateTest, EnterLogsInfo)
+{
+    StubSensor sensor;
+    FakePublisher publisher;
+    StubClock clock;
+    FakeLogger logger;
+    Node node(sensor, publisher, clock, logger, SendingState::getInstance());
+
+    SendingState::getInstance().enter(node);
+
+    EXPECT_EQ(logger.infoCount, 1);
+    EXPECT_FALSE(logger.lastInfoMessage.empty());
+}
+
+TEST(SendingStateTest, ExitLogsInfo)
+{
+    StubSensor sensor;
+    FakePublisher publisher;
+    StubClock clock;
+    FakeLogger logger;
+    Node node(sensor, publisher, clock, logger, SendingState::getInstance());
+
+    SendingState::getInstance().exit(node);
+
+    EXPECT_EQ(logger.infoCount, 1);
+    EXPECT_FALSE(logger.lastInfoMessage.empty());
 }
