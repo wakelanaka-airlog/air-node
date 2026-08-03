@@ -3,6 +3,11 @@
 #include "I2cBus.h"
 #include <esp_err.h>
 
+namespace
+{
+    constexpr int kI2cTimeoutMs = 1000;
+}
+
 Esp32I2cBus::Esp32I2cBus(i2c_port_num_t port, gpio_num_t sdaPin, gpio_num_t sclPin)
 {
     i2c_master_bus_config_t busConfig{};
@@ -48,10 +53,10 @@ i2c_master_dev_handle_t Esp32I2cBus::getOrAddDevice(uint8_t address)
 
 bool Esp32I2cBus::write(uint8_t address, const uint8_t* data, size_t length)
 {
-    return i2c_master_transmit(getOrAddDevice(address), data, length, -1) == ESP_OK;
+    return i2c_master_transmit(getOrAddDevice(address), data, length, kI2cTimeoutMs) == ESP_OK;
 }
 
 bool Esp32I2cBus::read(uint8_t address, uint8_t* buffer, size_t length)
 {
-    return i2c_master_receive(getOrAddDevice(address), buffer, length, -1) == ESP_OK;
+    return i2c_master_receive(getOrAddDevice(address), buffer, length, kI2cTimeoutMs) == ESP_OK;
 }

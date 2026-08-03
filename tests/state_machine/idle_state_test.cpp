@@ -16,6 +16,11 @@ namespace
             return true;
         }
 
+        bool stopPeriodicMeasurement() override
+        {
+            return true;
+        }
+
         bool isDataReady() override
         {
             ++isDataReadyCount;
@@ -69,6 +74,28 @@ namespace
         }
     };
 
+    class StubMeasurementStore : public MeasurementStore
+    {
+    public:
+        void enqueue(const Measurement&) override
+        {
+        }
+
+        bool isEmpty() const override
+        {
+            return true;
+        }
+
+        Measurement peekOldest() const override
+        {
+            return Measurement{};
+        }
+
+        void popOldest() override
+        {
+        }
+    };
+
     class StubClock : public Clock
     {
     public:
@@ -76,6 +103,17 @@ namespace
         {
             return 0;
         }
+    };
+
+    class FakeClock : public Clock
+    {
+    public:
+        uint64_t nowUnixMillis() override
+        {
+            return currentTime;
+        }
+
+        uint64_t currentTime = 0;
     };
 }
 
@@ -85,21 +123,58 @@ TEST(IdleStateTest, ProcessChecksDataReady)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
-    Node node(sensor, publisher, clock, logger, IdleState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
     node.process();
 
     EXPECT_EQ(sensor.isDataReadyCount, 1);
 }
 
-TEST(IdleStateTest, ProcessTransitionsToReadingWhenDataIsReady)
+TEST(IdleStateTest, ProcessTransitionsToReadingWhenDataIsReadyOnFirstEverCheck)
 {
     FakeSensor sensor;
     StubPublisher publisher;
-    StubClock clock;
+    FakeClock clock;
+    clock.currentTime = 2000000000000ULL;
     StubLogger logger;
+    StubMeasurementStore store;
     sensor.isDataReadyResult = true;
-    Node node(sensor, publisher, clock, logger, IdleState::getInstance());
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
+
+    node.process();
+
+    EXPECT_EQ(node.getState(), &ReadingState::getInstance());
+}
+
+TEST(IdleStateTest, ProcessStaysInIdleWhenReadingIntervalHasNotElapsed)
+{
+    FakeSensor sensor;
+    StubPublisher publisher;
+    FakeClock clock;
+    clock.currentTime = 2000000000000ULL;
+    StubLogger logger;
+    StubMeasurementStore store;
+    sensor.isDataReadyResult = true;
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
+    node.setLastReadingTime(clock.currentTime - 600000ULL); // 10 minutes ago
+
+    node.process();
+
+    EXPECT_EQ(node.getState(), &IdleState::getInstance());
+}
+
+TEST(IdleStateTest, ProcessTransitionsToReadingWhenReadingIntervalHasElapsed)
+{
+    FakeSensor sensor;
+    StubPublisher publisher;
+    FakeClock clock;
+    clock.currentTime = 2000000000000ULL;
+    StubLogger logger;
+    StubMeasurementStore store;
+    sensor.isDataReadyResult = true;
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
+    node.setLastReadingTime(clock.currentTime - 1000000ULL); // ~16.7 minutes ago
 
     node.process();
 
@@ -112,8 +187,9 @@ TEST(IdleStateTest, ProcessStaysInIdleWhenDataIsNotReady)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     sensor.isDataReadyResult = false;
-    Node node(sensor, publisher, clock, logger, IdleState::getInstance());
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
     node.process();
 
@@ -126,7 +202,8 @@ TEST(IdleStateTest, EnterLogsInfo)
     StubPublisher publisher;
     StubClock clock;
     FakeLogger logger;
-    Node node(sensor, publisher, clock, logger, IdleState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
     IdleState::getInstance().enter(node);
 
@@ -140,7 +217,8 @@ TEST(IdleStateTest, ExitLogsInfo)
     StubPublisher publisher;
     StubClock clock;
     FakeLogger logger;
-    Node node(sensor, publisher, clock, logger, IdleState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
     IdleState::getInstance().exit(node);
 

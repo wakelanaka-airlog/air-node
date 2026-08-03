@@ -27,8 +27,17 @@ bool Scd41Sensor::isDataReady()
 
 bool Scd41Sensor::startPeriodicMeasurement()
 {
-    constexpr uint8_t command[] = {0x21, 0xb1};
+    constexpr uint8_t command[] = {0x21, 0xac};
     return bus_.write(i2cAddress, command, sizeof(command));
+}
+
+bool Scd41Sensor::stopPeriodicMeasurement()
+{
+    constexpr uint8_t command[] = {0x3f, 0x86};
+    const bool result = bus_.write(i2cAddress, command, sizeof(command));
+
+    delay_.delayMs(500);
+    return result;
 }
 
 bool Scd41Sensor::readMeasurement(Measurement& measurement)

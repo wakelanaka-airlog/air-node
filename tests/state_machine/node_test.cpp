@@ -32,6 +32,11 @@ namespace
             return true;
         }
 
+        bool stopPeriodicMeasurement() override
+        {
+            return true;
+        }
+
         bool isDataReady() override
         {
             return false;
@@ -69,6 +74,28 @@ namespace
         }
 
         void error(const char*) override
+        {
+        }
+    };
+
+    class StubMeasurementStore : public MeasurementStore
+    {
+    public:
+        void enqueue(const Measurement&) override
+        {
+        }
+
+        bool isEmpty() const override
+        {
+            return true;
+        }
+
+        Measurement peekOldest() const override
+        {
+            return Measurement{};
+        }
+
+        void popOldest() override
         {
         }
     };
@@ -128,8 +155,9 @@ TEST(NodeTest, CanBeInstantiated)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     StubState state;
-    Node node(sensor, publisher, clock, logger, state);
+    Node node(sensor, publisher, clock, logger, store, state);
     SUCCEED();
 }
 
@@ -139,9 +167,10 @@ TEST(NodeTest, ConstructorSetsInitialState)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     StubState state;
 
-    Node node(sensor, publisher, clock, logger, state);
+    Node node(sensor, publisher, clock, logger, store, state);
 
     EXPECT_EQ(node.getState(), &state);
 }
@@ -152,9 +181,10 @@ TEST(NodeTest, ConstructorSetsSensor)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     StubState state;
 
-    Node node(sensor, publisher, clock, logger, state);
+    Node node(sensor, publisher, clock, logger, store, state);
 
     EXPECT_EQ(&node.getSensor(), &sensor);
 }
@@ -165,9 +195,10 @@ TEST(NodeTest, ConstructorSetsPublisher)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     StubState state;
 
-    Node node(sensor, publisher, clock, logger, state);
+    Node node(sensor, publisher, clock, logger, store, state);
 
     EXPECT_EQ(&node.getPublisher(), &publisher);
 }
@@ -178,11 +209,26 @@ TEST(NodeTest, ConstructorSetsClock)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     StubState state;
 
-    Node node(sensor, publisher, clock, logger, state);
+    Node node(sensor, publisher, clock, logger, store, state);
 
     EXPECT_EQ(&node.getClock(), &clock);
+}
+
+TEST(NodeTest, ConstructorSetsMeasurementStore)
+{
+    StubSensor sensor;
+    StubPublisher publisher;
+    StubClock clock;
+    StubLogger logger;
+    StubMeasurementStore store;
+    StubState state;
+
+    Node node(sensor, publisher, clock, logger, store, state);
+
+    EXPECT_EQ(&node.getMeasurementStore(), &store);
 }
 
 TEST(NodeTest, ProcessDelegatesToCurrentState)
@@ -191,9 +237,10 @@ TEST(NodeTest, ProcessDelegatesToCurrentState)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     TrackingState state;
 
-    Node node(sensor, publisher, clock, logger, state);
+    Node node(sensor, publisher, clock, logger, store, state);
     node.process();
 
     EXPECT_EQ(state.processCount, 1);
@@ -206,8 +253,9 @@ TEST(NodeTest, TransitionToChangesCurrentState)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     StubState initialState;
-    Node node(sensor, publisher, clock, logger, initialState);
+    Node node(sensor, publisher, clock, logger, store, initialState);
 
     StubState newState;
     node.transitionTo(newState);
@@ -221,12 +269,13 @@ TEST(NodeTest, TransitionToCallsExitThenEnter)
     StubPublisher publisher;
     StubClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     std::vector<std::string> log;
 
     TrackingState oldState(&log);
     TrackingState newState(&log);
 
-    Node node(sensor, publisher, clock, logger, oldState);
+    Node node(sensor, publisher, clock, logger, store, oldState);
     node.transitionTo(newState);
 
     EXPECT_EQ(oldState.exitCount, 1);

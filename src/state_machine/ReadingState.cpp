@@ -4,6 +4,8 @@
 #include "Node.h"
 #include "SendingState.h"
 
+#include <cstdio>
+
 ReadingState& ReadingState::getInstance()
 {
     static ReadingState instance;
@@ -27,6 +29,13 @@ void ReadingState::process(Node& node)
 
     measurement.timestampUnixMillis = node.getClock().nowUnixMillis();
     node.setMeasurement(measurement);
+    node.setLastReadingTime(measurement.timestampUnixMillis);
+    char loggingInfo[128];
+    std::snprintf(loggingInfo, sizeof(loggingInfo),
+                  "Measurement: { timestampUnixMillis: %llu, co2Ppm: %u, temperatureCelsius: %.2f, humidityPercent: %.2f}",
+                  static_cast<unsigned long long>(measurement.timestampUnixMillis), measurement.co2Ppm,
+                  measurement.temperatureCelsius, measurement.humidityPercent);
+    node.getLogger().info(loggingInfo);
     node.transitionTo(SendingState::getInstance());
 }
 

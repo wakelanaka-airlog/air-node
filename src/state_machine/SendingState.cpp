@@ -19,8 +19,18 @@ void SendingState::process(Node& node)
 {
     if (!node.getPublisher().publish(node.getMeasurement()))
     {
+        node.getMeasurementStore().enqueue(node.getMeasurement());
         node.transitionTo(ErrorState::getInstance());
         return;
+    }
+
+    while (!node.getMeasurementStore().isEmpty())
+    {
+        if (!node.getPublisher().publish(node.getMeasurementStore().peekOldest()))
+        {
+            break;
+        }
+        node.getMeasurementStore().popOldest();
     }
     node.transitionTo(IdleState::getInstance());
 }

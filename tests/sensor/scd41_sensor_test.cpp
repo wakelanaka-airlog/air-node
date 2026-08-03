@@ -76,7 +76,7 @@ namespace
     };
 }
 
-TEST(Scd41SensorTest, StartPeriodicMeasurementSendsCorrectCommand)
+TEST(Scd41SensorTest, StartPeriodicMeasurementSendsLowPowerCommand)
 {
     FakeI2cBus bus;
     FakeDelay delay;
@@ -88,7 +88,54 @@ TEST(Scd41SensorTest, StartPeriodicMeasurementSendsCorrectCommand)
     EXPECT_EQ(bus.lastWriteAddress, Scd41Sensor::i2cAddress);
     ASSERT_EQ(bus.lastWriteData.size(), 2u);
     EXPECT_EQ(bus.lastWriteData[0], 0x21);
-    EXPECT_EQ(bus.lastWriteData[1], 0xB1);
+    EXPECT_EQ(bus.lastWriteData[1], 0xAC);
+}
+
+TEST(Scd41SensorTest, StopPeriodicMeasurementSendsCorrectCommand)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    Scd41Sensor sensor(bus, delay);
+
+    sensor.stopPeriodicMeasurement();
+
+    EXPECT_EQ(bus.writeCount, 1);
+    EXPECT_EQ(bus.lastWriteAddress, Scd41Sensor::i2cAddress);
+    ASSERT_EQ(bus.lastWriteData.size(), 2u);
+    EXPECT_EQ(bus.lastWriteData[0], 0x3F);
+    EXPECT_EQ(bus.lastWriteData[1], 0x86);
+}
+
+TEST(Scd41SensorTest, StopPeriodicMeasurementDelaysForSensorToSettle)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    Scd41Sensor sensor(bus, delay);
+
+    sensor.stopPeriodicMeasurement();
+
+    EXPECT_EQ(delay.callCount, 1);
+    EXPECT_EQ(delay.lastMilliseconds, 500u);
+}
+
+TEST(Scd41SensorTest, StopPeriodicMeasurementReturnsTrueOnSuccessfulWrite)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    bus.writeResult = true;
+    Scd41Sensor sensor(bus, delay);
+
+    EXPECT_TRUE(sensor.stopPeriodicMeasurement());
+}
+
+TEST(Scd41SensorTest, StopPeriodicMeasurementReturnsFalseOnFailedWrite)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    bus.writeResult = false;
+    Scd41Sensor sensor(bus, delay);
+
+    EXPECT_FALSE(sensor.stopPeriodicMeasurement());
 }
 
 TEST(Scd41SensorTest, IsDataReadySendsCorrectCommand)
@@ -162,7 +209,7 @@ TEST(Scd41SensorTest, IsDataReadyReturnsFalseOnCrcMismatch)
     FakeI2cBus bus;
     FakeDelay delay;
     bus.readData = makeFrame(0x00, 0x01); // would read as "ready" if trusted
-    bus.readData[2] ^= 0xFF;              // corrupt the CRC byte
+    bus.readData[2] ^= 0xFF; // corrupt the CRC byte
     Scd41Sensor sensor(bus, delay);
 
     EXPECT_FALSE(sensor.isDataReady());

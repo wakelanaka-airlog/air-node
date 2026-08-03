@@ -1,8 +1,11 @@
 #include "Node.h"
 
-Node::Node(Sensor& sensor, Publisher& publisher, Clock& clock, Logger& logger, NodeState& initialState) : sensor_{sensor},
-    publisher_{publisher},
-    clock_{clock}, logger_{logger}, state_{&initialState}
+Node::Node(Sensor& sensor, Publisher& publisher, Clock& clock, Logger& logger, MeasurementStore& store,
+           NodeState& initialState) : sensor_{sensor},
+                                      publisher_{publisher},
+                                      clock_{clock}, logger_{logger},
+                                      state_{&initialState},
+                                      store_{store}
 {
 }
 
@@ -51,4 +54,19 @@ const Measurement& Node::getMeasurement() const
 void Node::setMeasurement(const Measurement& measurement)
 {
     measurement_ = measurement;
+}
+
+MeasurementStore& Node::getMeasurementStore() const
+{
+    return store_;
+}
+
+void Node::setLastReadingTime(uint64_t timestampUnixMillis)
+{
+    lastReadingTimeUnixMillis_ = timestampUnixMillis;
+}
+
+uint64_t Node::getLastReadingTime() const
+{
+    return lastReadingTimeUnixMillis_;
 }

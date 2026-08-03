@@ -8,6 +8,7 @@
 #include "platform/esp32/MqttPublisher.h"
 #include "platform/esp32/Esp32WifiStation.h"
 
+#include <cstddef>
 #include <cstdlib>
 #include <string>
 
@@ -17,6 +18,7 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "logging/FilteringLogger.h"
+#include "storage/InMemoryMeasurementStore.h"
 
 #ifdef CONFIG_NODE_DEVELOPMENT_MODE
 constexpr bool developmentMode = true;
@@ -28,6 +30,7 @@ namespace
 {
     constexpr const char* kTag = "app_main";
     constexpr uint32_t kWifiConnectTimeoutMs = 30000;
+    constexpr std::size_t kMeasurementStoreCapacity = 64;
 }
 
 extern "C" void app_main()
@@ -69,7 +72,9 @@ extern "C" void app_main()
         CONFIG_MQTT_BROKER_URI, CONFIG_MQTT_USERNAME, CONFIG_MQTT_PASSWORD, topic, CONFIG_NODE_ROOM
     };
 
-    static Node node{scd41Sensor, publisher, clock, filteringLogger, InitState::getInstance()};
+    static InMemoryMeasurementStore measurementStore{kMeasurementStoreCapacity};
+
+    static Node node{scd41Sensor, publisher, clock, filteringLogger, measurementStore, InitState::getInstance()};
 
     while (true)
     {

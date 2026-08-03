@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <string>
+#include <vector>
 
 #include "ErrorState.h"
 #include "Node.h"
@@ -12,6 +14,11 @@ namespace
     {
     public:
         bool startPeriodicMeasurement() override
+        {
+            return true;
+        }
+
+        bool stopPeriodicMeasurement() override
         {
             return true;
         }
@@ -61,6 +68,7 @@ namespace
         {
             ++infoCount;
             lastInfoMessage = message ? message : "";
+            infoMessages.push_back(lastInfoMessage);
         }
 
         void error(const char*) override
@@ -69,6 +77,29 @@ namespace
 
         int infoCount = 0;
         std::string lastInfoMessage;
+        std::vector<std::string> infoMessages;
+    };
+
+    class StubMeasurementStore : public MeasurementStore
+    {
+    public:
+        void enqueue(const Measurement&) override
+        {
+        }
+
+        bool isEmpty() const override
+        {
+            return true;
+        }
+
+        Measurement peekOldest() const override
+        {
+            return Measurement{};
+        }
+
+        void popOldest() override
+        {
+        }
     };
 
     class FakeClock : public Clock
@@ -89,7 +120,8 @@ TEST(ReadingStateTest, ProcessReadsMeasurement)
     StubPublisher publisher;
     FakeClock clock;
     StubLogger logger;
-    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     node.process();
 
@@ -102,8 +134,9 @@ TEST(ReadingStateTest, ProcessStoresMeasurementOnSuccess)
     StubPublisher publisher;
     FakeClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     sensor.measurementToReturn = Measurement{0, 404, 25.0f, 50.0f};
-    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     node.process();
 
@@ -118,14 +151,49 @@ TEST(ReadingStateTest, ProcessStampsMeasurementWithCurrentTime)
     StubPublisher publisher;
     FakeClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     clock.currentTime = 1738156800000ULL;
 
     sensor.measurementToReturn = Measurement{999, 404, 25.0f, 50.0f};
-    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     node.process();
 
     EXPECT_EQ(node.getMeasurement().timestampUnixMillis, 1738156800000ULL);
+}
+
+TEST(ReadingStateTest, ProcessUpdatesLastReadingTimeOnSuccess)
+{
+    FakeSensor sensor;
+    StubPublisher publisher;
+    FakeClock clock;
+    StubLogger logger;
+    StubMeasurementStore store;
+    clock.currentTime = 1738156800000ULL;
+
+    sensor.measurementToReturn = Measurement{999, 404, 25.0f, 50.0f};
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
+
+    node.process();
+
+    EXPECT_EQ(node.getLastReadingTime(), 1738156800000ULL);
+}
+
+TEST(ReadingStateTest, ProcessDoesNotUpdateLastReadingTimeOnFailure)
+{
+    FakeSensor sensor;
+    StubPublisher publisher;
+    FakeClock clock;
+    StubLogger logger;
+    StubMeasurementStore store;
+    clock.currentTime = 1738156800000ULL;
+    sensor.readMeasurementResult = false;
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
+    node.setLastReadingTime(123);
+
+    node.process();
+
+    EXPECT_EQ(node.getLastReadingTime(), 123ULL);
 }
 
 TEST(ReadingStateTest, ProcessTransitionsToErrorOnReadFailure)
@@ -134,8 +202,9 @@ TEST(ReadingStateTest, ProcessTransitionsToErrorOnReadFailure)
     StubPublisher publisher;
     FakeClock clock;
     StubLogger logger;
+    StubMeasurementStore store;
     sensor.readMeasurementResult = false;
-    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     node.process();
 
@@ -148,7 +217,8 @@ TEST(ReadingStateTest, EnterLogsInfo)
     StubPublisher publisher;
     FakeClock clock;
     FakeLogger logger;
-    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     ReadingState::getInstance().enter(node);
 
@@ -162,10 +232,29 @@ TEST(ReadingStateTest, ExitLogsInfo)
     StubPublisher publisher;
     FakeClock clock;
     FakeLogger logger;
-    Node node(sensor, publisher, clock, logger, ReadingState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     ReadingState::getInstance().exit(node);
 
     EXPECT_EQ(logger.infoCount, 1);
     EXPECT_FALSE(logger.lastInfoMessage.empty());
+}
+
+TEST(ReadingStateTest, ProcessLogsMeasurementInfo)
+{
+    FakeSensor sensor;
+    StubPublisher publisher;
+    FakeClock clock;
+    FakeLogger logger;
+    StubMeasurementStore store;
+    sensor.measurementToReturn = Measurement{1738156800000ULL, 404, 25.0f, 50.0f};
+    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
+
+    ReadingState::getInstance().process(node);
+
+    const bool loggedMeasurement = std::any_of(
+        logger.infoMessages.begin(), logger.infoMessages.end(),
+        [](const std::string& message) { return message.find("404") != std::string::npos; });
+    EXPECT_TRUE(loggedMeasurement);
 }

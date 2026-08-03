@@ -16,6 +16,11 @@ namespace
             return true;
         }
 
+        bool stopPeriodicMeasurement() override
+        {
+            return true;
+        }
+
         bool isDataReady() override
         {
             return false;
@@ -65,6 +70,28 @@ namespace
         int errorCount = 0;
         std::string lastMessage;
     };
+
+    class StubMeasurementStore : public MeasurementStore
+    {
+    public:
+        void enqueue(const Measurement&) override
+        {
+        }
+
+        bool isEmpty() const override
+        {
+            return true;
+        }
+
+        Measurement peekOldest() const override
+        {
+            return Measurement{};
+        }
+
+        void popOldest() override
+        {
+        }
+    };
 }
 
 TEST(ErrorStateTest, ProcessTransitionsToInit)
@@ -73,7 +100,8 @@ TEST(ErrorStateTest, ProcessTransitionsToInit)
     StubPublisher publisher;
     StubClock clock;
     FakeLogger logger;
-    Node node(sensor, publisher, clock, logger, ErrorState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, ErrorState::getInstance());
 
     node.process();
 
@@ -86,7 +114,8 @@ TEST(ErrorStateTest, ProcessLogsAnError)
     StubPublisher publisher;
     StubClock clock;
     FakeLogger logger;
-    Node node(sensor, publisher, clock, logger, ErrorState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, ErrorState::getInstance());
 
     node.process();
 
@@ -100,7 +129,8 @@ TEST(ErrorStateTest, EnterLogsInfo)
     StubPublisher publisher;
     StubClock clock;
     FakeLogger logger;
-    Node node(sensor, publisher, clock, logger, ErrorState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, ErrorState::getInstance());
 
     ErrorState::getInstance().enter(node);
 
@@ -114,7 +144,8 @@ TEST(ErrorStateTest, ExitLogsInfo)
     StubPublisher publisher;
     StubClock clock;
     FakeLogger logger;
-    Node node(sensor, publisher, clock, logger, ErrorState::getInstance());
+    StubMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, ErrorState::getInstance());
 
     ErrorState::getInstance().exit(node);
 

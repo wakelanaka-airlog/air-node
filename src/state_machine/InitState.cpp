@@ -17,8 +17,11 @@ void InitState::enter(Node& node)
 
 void InitState::process(Node& node)
 {
+    node.getSensor().stopPeriodicMeasurement();
+
     if (node.getSensor().startPeriodicMeasurement())
     {
+        node.setLastReadingTime(node.getClock().nowUnixMillis());
         node.transitionTo(IdleState::getInstance());
     }
     else

@@ -14,6 +14,7 @@ public:
     Scd41Sensor(I2cBus& bus, Delay& delay);
 
     bool startPeriodicMeasurement() override;
+    bool stopPeriodicMeasurement() override;
     bool isDataReady() override;
     bool readMeasurement(Measurement& measurement) override;
 
