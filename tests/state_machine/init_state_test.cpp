@@ -7,6 +7,7 @@
 #include "IdleState.h"
 #include "InitState.h"
 #include "Node.h"
+#include "support/NullDoubles.h"
 
 namespace
 {
@@ -44,18 +45,6 @@ namespace
         std::vector<std::string> callOrder;
     };
 
-    class StubLogger : public Logger
-    {
-    public:
-        void info(const char*) override
-        {
-        }
-
-        void error(const char*) override
-        {
-        }
-    };
-
     class FakeLogger : public Logger
     {
     public:
@@ -72,66 +61,15 @@ namespace
         int infoCount = 0;
         std::string lastInfoMessage;
     };
-
-    class StubPublisher : public Publisher
-    {
-    public:
-        bool publish(const Measurement&) override
-        {
-            return true;
-        }
-    };
-
-    class StubMeasurementStore : public MeasurementStore
-    {
-    public:
-        void enqueue(const Measurement&) override
-        {
-        }
-
-        bool isEmpty() const override
-        {
-            return true;
-        }
-
-        Measurement peekOldest() const override
-        {
-            return Measurement{};
-        }
-
-        void popOldest() override
-        {
-        }
-    };
-
-    class StubClock : public Clock
-    {
-    public:
-        uint64_t nowUnixMillis() override
-        {
-            return 0;
-        }
-    };
-
-    class FakeClock : public Clock
-    {
-    public:
-        uint64_t nowUnixMillis() override
-        {
-            return currentTime;
-        }
-
-        uint64_t currentTime = 0;
-    };
 }
 
 TEST(InitStateTest, ProcessStartsPeriodicMeasurement)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
 
     node.process();
@@ -142,10 +80,10 @@ TEST(InitStateTest, ProcessStartsPeriodicMeasurement)
 TEST(InitStateTest, ProcessStopsPeriodicMeasurement)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
 
     node.process();
@@ -156,10 +94,10 @@ TEST(InitStateTest, ProcessStopsPeriodicMeasurement)
 TEST(InitStateTest, ProcessStopsBeforeStarting)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
 
     node.process();
@@ -172,10 +110,10 @@ TEST(InitStateTest, ProcessStopsBeforeStarting)
 TEST(InitStateTest, ProcessTransitionsToIdleOnSuccess)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.startPeriodicMeasurementResult = true;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
 
@@ -187,11 +125,11 @@ TEST(InitStateTest, ProcessTransitionsToIdleOnSuccess)
 TEST(InitStateTest, ProcessSeedsLastReadingTimeOnSuccess)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     clock.currentTime = 1738156800000ULL;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.startPeriodicMeasurementResult = true;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
 
@@ -203,11 +141,11 @@ TEST(InitStateTest, ProcessSeedsLastReadingTimeOnSuccess)
 TEST(InitStateTest, ProcessDoesNotSeedLastReadingTimeOnFailure)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     clock.currentTime = 1738156800000ULL;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.startPeriodicMeasurementResult = false;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
     node.setLastReadingTime(123);
@@ -220,10 +158,10 @@ TEST(InitStateTest, ProcessDoesNotSeedLastReadingTimeOnFailure)
 TEST(InitStateTest, ProcessTransitionsToErrorOnFailure)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.startPeriodicMeasurementResult = false;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
 
@@ -235,10 +173,10 @@ TEST(InitStateTest, ProcessTransitionsToErrorOnFailure)
 TEST(InitStateTest, EnterLogsInfo)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
 
     InitState::getInstance().enter(node);
@@ -250,10 +188,10 @@ TEST(InitStateTest, EnterLogsInfo)
 TEST(InitStateTest, ExitLogsInfo)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
 
     InitState::getInstance().exit(node);

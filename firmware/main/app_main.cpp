@@ -63,7 +63,7 @@ extern "C" void app_main()
 
     static Esp32SntpClock clock(CONFIG_SNTP_SERVER, filteringLogger);
 
-    static Esp32I2cBus i2cBus{I2C_NUM_0, GPIO_NUM_21, GPIO_NUM_22};
+    static Esp32I2cBus i2cBus{I2C_NUM_0, GPIO_NUM_21, GPIO_NUM_22, filteringLogger};
     static Esp32Delay delay{};
     static Scd41Sensor scd41Sensor{i2cBus, delay};
 

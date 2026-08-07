@@ -2,7 +2,7 @@
 # (hardware-agnostic and ESP32-specific) it wires together.
 
 idf_component_register(
-    SRC_DIRS "." "../../src" "../../src/state_machine" "../../src/interfaces" "../../src/sensor" "../../src/platform/esp32" "../../src/logging" "../../src/storage"
-    INCLUDE_DIRS "." "../../src" "../../src/state_machine" "../../src/interfaces" "../../src/sensor" "../../src/platform/esp32" "../../src/logging" "../../src/storage"
+    SRC_DIRS "." "../../src" "../../src/state_machine" "../../src/interfaces" "../../src/sensor" "../../src/platform/esp32" "../../src/logging" "../../src/storage" "../../src/mqtt"
+    INCLUDE_DIRS "." "../../src" "../../src/state_machine" "../../src/interfaces" "../../src/sensor" "../../src/platform/esp32" "../../src/logging" "../../src/storage" "../../src/mqtt"
     REQUIRES driver mqtt esp_wifi nvs_flash
 )

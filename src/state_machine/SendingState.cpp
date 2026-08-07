@@ -19,6 +19,10 @@ void SendingState::process(Node& node)
 {
     if (!node.getPublisher().publish(node.getMeasurement()))
     {
+        if (node.getMeasurementStore().isFull())
+        {
+            node.getLogger().error("Measurement store is full - oldest backlogged reading will be overwritten");
+        }
         node.getMeasurementStore().enqueue(node.getMeasurement());
         node.transitionTo(ErrorState::getInstance());
         return;
@@ -28,6 +32,7 @@ void SendingState::process(Node& node)
     {
         if (!node.getPublisher().publish(node.getMeasurementStore().peekOldest()))
         {
+            node.getLogger().error("Failed to drain backlog - will retry next cycle");
             break;
         }
         node.getMeasurementStore().popOldest();

@@ -5,6 +5,7 @@
 #include "IdleState.h"
 #include "Node.h"
 #include "ReadingState.h"
+#include "support/NullDoubles.h"
 
 namespace
 {
@@ -36,18 +37,6 @@ namespace
         bool isDataReadyResult = false;
     };
 
-    class StubLogger : public Logger
-    {
-    public:
-        void info(const char*) override
-        {
-        }
-
-        void error(const char*) override
-        {
-        }
-    };
-
     class FakeLogger : public Logger
     {
     public:
@@ -64,66 +53,15 @@ namespace
         int infoCount = 0;
         std::string lastInfoMessage;
     };
-
-    class StubPublisher : public Publisher
-    {
-    public:
-        bool publish(const Measurement&) override
-        {
-            return true;
-        }
-    };
-
-    class StubMeasurementStore : public MeasurementStore
-    {
-    public:
-        void enqueue(const Measurement&) override
-        {
-        }
-
-        bool isEmpty() const override
-        {
-            return true;
-        }
-
-        Measurement peekOldest() const override
-        {
-            return Measurement{};
-        }
-
-        void popOldest() override
-        {
-        }
-    };
-
-    class StubClock : public Clock
-    {
-    public:
-        uint64_t nowUnixMillis() override
-        {
-            return 0;
-        }
-    };
-
-    class FakeClock : public Clock
-    {
-    public:
-        uint64_t nowUnixMillis() override
-        {
-            return currentTime;
-        }
-
-        uint64_t currentTime = 0;
-    };
 }
 
 TEST(IdleStateTest, ProcessChecksDataReady)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
     node.process();
@@ -134,11 +72,11 @@ TEST(IdleStateTest, ProcessChecksDataReady)
 TEST(IdleStateTest, ProcessTransitionsToReadingWhenDataIsReadyOnFirstEverCheck)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     clock.currentTime = 2000000000000ULL;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.isDataReadyResult = true;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
@@ -150,11 +88,11 @@ TEST(IdleStateTest, ProcessTransitionsToReadingWhenDataIsReadyOnFirstEverCheck)
 TEST(IdleStateTest, ProcessStaysInIdleWhenReadingIntervalHasNotElapsed)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     clock.currentTime = 2000000000000ULL;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.isDataReadyResult = true;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
     node.setLastReadingTime(clock.currentTime - 600000ULL); // 10 minutes ago
@@ -167,11 +105,11 @@ TEST(IdleStateTest, ProcessStaysInIdleWhenReadingIntervalHasNotElapsed)
 TEST(IdleStateTest, ProcessTransitionsToReadingWhenReadingIntervalHasElapsed)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     clock.currentTime = 2000000000000ULL;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.isDataReadyResult = true;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
     node.setLastReadingTime(clock.currentTime - 1000000ULL); // ~16.7 minutes ago
@@ -181,13 +119,66 @@ TEST(IdleStateTest, ProcessTransitionsToReadingWhenReadingIntervalHasElapsed)
     EXPECT_EQ(node.getState(), &ReadingState::getInstance());
 }
 
+TEST(IdleStateTest, ProcessStaysInIdleWhenClockStepsBackward)
+{
+    FakeSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
+    sensor.isDataReadyResult = true;
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
+    node.setLastReadingTime(5000000ULL);
+    clock.currentTime = 4000000ULL; // clock stepped backward, e.g. an SNTP resync correction
+
+    node.process();
+
+    EXPECT_EQ(node.getState(), &IdleState::getInstance());
+}
+
+TEST(IdleStateTest, ProcessResetsLastReadingTimeToNowWhenClockStepsBackward)
+{
+    FakeSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
+    sensor.isDataReadyResult = true;
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
+    node.setLastReadingTime(5000000ULL);
+    clock.currentTime = 4000000ULL;
+
+    node.process();
+
+    EXPECT_EQ(node.getLastReadingTime(), 4000000ULL);
+}
+
+TEST(IdleStateTest, ProcessTransitionsToReadingAfterFullIntervalFollowingClockStepBackward)
+{
+    FakeSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
+    sensor.isDataReadyResult = true;
+    Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
+    node.setLastReadingTime(5000000ULL);
+    clock.currentTime = 4000000ULL; // clock steps backward, absorbed without transitioning
+    node.process();
+
+    clock.currentTime = 4000000ULL + 15 * 60 * 1000; // full interval elapses from the new baseline
+    node.process();
+
+    EXPECT_EQ(node.getState(), &ReadingState::getInstance());
+}
+
 TEST(IdleStateTest, ProcessStaysInIdleWhenDataIsNotReady)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.isDataReadyResult = false;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
@@ -199,10 +190,10 @@ TEST(IdleStateTest, ProcessStaysInIdleWhenDataIsNotReady)
 TEST(IdleStateTest, EnterLogsInfo)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
     IdleState::getInstance().enter(node);
@@ -214,10 +205,10 @@ TEST(IdleStateTest, EnterLogsInfo)
 TEST(IdleStateTest, ExitLogsInfo)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
 
     IdleState::getInstance().exit(node);

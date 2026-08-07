@@ -5,51 +5,10 @@
 #include "ErrorState.h"
 #include "InitState.h"
 #include "Node.h"
+#include "support/NullDoubles.h"
 
 namespace
 {
-    class StubSensor : public Sensor
-    {
-    public:
-        bool startPeriodicMeasurement() override
-        {
-            return true;
-        }
-
-        bool stopPeriodicMeasurement() override
-        {
-            return true;
-        }
-
-        bool isDataReady() override
-        {
-            return false;
-        }
-
-        bool readMeasurement(Measurement&) override
-        {
-            return false;
-        }
-    };
-
-    class StubPublisher : public Publisher
-    {
-    public:
-        bool publish(const Measurement&) override
-        {
-            return true;
-        }
-    };
-
-    class StubClock : public Clock
-    {
-    public:
-        uint64_t nowUnixMillis() override
-        {
-            return 0;
-        }
-    };
-
     class FakeLogger : public Logger
     {
     public:
@@ -70,37 +29,15 @@ namespace
         int errorCount = 0;
         std::string lastMessage;
     };
-
-    class StubMeasurementStore : public MeasurementStore
-    {
-    public:
-        void enqueue(const Measurement&) override
-        {
-        }
-
-        bool isEmpty() const override
-        {
-            return true;
-        }
-
-        Measurement peekOldest() const override
-        {
-            return Measurement{};
-        }
-
-        void popOldest() override
-        {
-        }
-    };
 }
 
 TEST(ErrorStateTest, ProcessTransitionsToInit)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, ErrorState::getInstance());
 
     node.process();
@@ -110,11 +47,11 @@ TEST(ErrorStateTest, ProcessTransitionsToInit)
 
 TEST(ErrorStateTest, ProcessLogsAnError)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, ErrorState::getInstance());
 
     node.process();
@@ -125,11 +62,11 @@ TEST(ErrorStateTest, ProcessLogsAnError)
 
 TEST(ErrorStateTest, EnterLogsInfo)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, ErrorState::getInstance());
 
     ErrorState::getInstance().enter(node);
@@ -140,11 +77,11 @@ TEST(ErrorStateTest, EnterLogsInfo)
 
 TEST(ErrorStateTest, ExitLogsInfo)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, ErrorState::getInstance());
 
     ErrorState::getInstance().exit(node);

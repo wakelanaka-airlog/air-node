@@ -5,6 +5,7 @@
 
 #include "Node.h"
 #include "NodeState.h"
+#include "support/NullDoubles.h"
 
 namespace
 {
@@ -20,82 +21,6 @@ namespace
         }
 
         void exit(Node&) override
-        {
-        }
-    };
-
-    class StubSensor : public Sensor
-    {
-    public:
-        bool startPeriodicMeasurement() override
-        {
-            return true;
-        }
-
-        bool stopPeriodicMeasurement() override
-        {
-            return true;
-        }
-
-        bool isDataReady() override
-        {
-            return false;
-        }
-
-        bool readMeasurement(Measurement&) override
-        {
-            return false;
-        }
-    };
-
-    class StubPublisher : public Publisher
-    {
-    public:
-        bool publish(const Measurement&) override
-        {
-            return true;
-        }
-    };
-
-    class StubClock : public Clock
-    {
-    public:
-        uint64_t nowUnixMillis() override
-        {
-            return 0;
-        }
-    };
-
-    class StubLogger : public Logger
-    {
-    public:
-        void info(const char*) override
-        {
-        }
-
-        void error(const char*) override
-        {
-        }
-    };
-
-    class StubMeasurementStore : public MeasurementStore
-    {
-    public:
-        void enqueue(const Measurement&) override
-        {
-        }
-
-        bool isEmpty() const override
-        {
-            return true;
-        }
-
-        Measurement peekOldest() const override
-        {
-            return Measurement{};
-        }
-
-        void popOldest() override
         {
         }
     };
@@ -151,11 +76,11 @@ namespace
 
 TEST(NodeTest, CanBeInstantiated)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     StubState state;
     Node node(sensor, publisher, clock, logger, store, state);
     SUCCEED();
@@ -163,11 +88,11 @@ TEST(NodeTest, CanBeInstantiated)
 
 TEST(NodeTest, ConstructorSetsInitialState)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     StubState state;
 
     Node node(sensor, publisher, clock, logger, store, state);
@@ -177,11 +102,11 @@ TEST(NodeTest, ConstructorSetsInitialState)
 
 TEST(NodeTest, ConstructorSetsSensor)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     StubState state;
 
     Node node(sensor, publisher, clock, logger, store, state);
@@ -191,11 +116,11 @@ TEST(NodeTest, ConstructorSetsSensor)
 
 TEST(NodeTest, ConstructorSetsPublisher)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     StubState state;
 
     Node node(sensor, publisher, clock, logger, store, state);
@@ -205,11 +130,11 @@ TEST(NodeTest, ConstructorSetsPublisher)
 
 TEST(NodeTest, ConstructorSetsClock)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     StubState state;
 
     Node node(sensor, publisher, clock, logger, store, state);
@@ -219,11 +144,11 @@ TEST(NodeTest, ConstructorSetsClock)
 
 TEST(NodeTest, ConstructorSetsMeasurementStore)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     StubState state;
 
     Node node(sensor, publisher, clock, logger, store, state);
@@ -233,11 +158,11 @@ TEST(NodeTest, ConstructorSetsMeasurementStore)
 
 TEST(NodeTest, ProcessDelegatesToCurrentState)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     TrackingState state;
 
     Node node(sensor, publisher, clock, logger, store, state);
@@ -249,11 +174,11 @@ TEST(NodeTest, ProcessDelegatesToCurrentState)
 
 TEST(NodeTest, TransitionToChangesCurrentState)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     StubState initialState;
     Node node(sensor, publisher, clock, logger, store, initialState);
 
@@ -265,11 +190,11 @@ TEST(NodeTest, TransitionToChangesCurrentState)
 
 TEST(NodeTest, TransitionToCallsExitThenEnter)
 {
-    StubSensor sensor;
-    StubPublisher publisher;
-    StubClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     std::vector<std::string> log;
 
     TrackingState oldState(&log);

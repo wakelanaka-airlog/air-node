@@ -1,15 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "storage/InMemoryMeasurementStore.h"
-
-namespace
-{
-    bool measurementsEqual(const Measurement& a, const Measurement& b)
-    {
-        return a.timestampUnixMillis == b.timestampUnixMillis && a.co2Ppm == b.co2Ppm &&
-            a.temperatureCelsius == b.temperatureCelsius && a.humidityPercent == b.humidityPercent;
-    }
-}
+#include "support/NullDoubles.h"
 
 TEST(InMemoryMeasurementStoreTest, NewStoreIsEmpty)
 {
@@ -75,6 +67,34 @@ TEST(InMemoryMeasurementStoreTest, MaintainsFifoOrderAcrossMultipleItems)
     EXPECT_TRUE(measurementsEqual(store.peekOldest(), third));
     store.popOldest();
     EXPECT_TRUE(store.isEmpty());
+}
+
+TEST(InMemoryMeasurementStoreTest, NewStoreIsNotFull)
+{
+    InMemoryMeasurementStore store(2);
+
+    EXPECT_FALSE(store.isFull());
+}
+
+TEST(InMemoryMeasurementStoreTest, IsFullReturnsTrueWhenAtCapacity)
+{
+    InMemoryMeasurementStore store(2);
+
+    store.enqueue(Measurement{1000, 100, 20.0f, 40.0f});
+    store.enqueue(Measurement{2000, 200, 21.0f, 41.0f});
+
+    EXPECT_TRUE(store.isFull());
+}
+
+TEST(InMemoryMeasurementStoreTest, IsFullReturnsFalseAfterPoppingBelowCapacity)
+{
+    InMemoryMeasurementStore store(2);
+    store.enqueue(Measurement{1000, 100, 20.0f, 40.0f});
+    store.enqueue(Measurement{2000, 200, 21.0f, 41.0f});
+
+    store.popOldest();
+
+    EXPECT_FALSE(store.isFull());
 }
 
 TEST(InMemoryMeasurementStoreTest, DropsOldestEntryWhenCapacityExceeded)

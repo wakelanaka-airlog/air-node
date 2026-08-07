@@ -15,6 +15,7 @@ if(SENSOR_NODE_TEST_SOURCES)
     FetchContent_MakeAvailable(googletest)
 
     add_executable(sensor_node_tests ${SENSOR_NODE_TEST_SOURCES})
+    target_include_directories(sensor_node_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(sensor_node_tests PRIVATE sensor_node GTest::gtest_main)
 
     include(GoogleTest)

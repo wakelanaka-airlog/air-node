@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <string>
 
 #include "freertos/FreeRTOS.h"
@@ -26,7 +27,7 @@ private:
     esp_mqtt_client_handle_t client_;
     std::string topic_;
     std::string room_;
-    bool connected_ = false;
+    std::atomic<bool> connected_{false};
     SemaphoreHandle_t publishAcked_;
-    int pendingMsgId_ = -1;
+    std::atomic<int> pendingMsgId_{-1};
 };

@@ -13,6 +13,7 @@ public:
 
     void enqueue(const Measurement& measurement) override;
     bool isEmpty() const override;
+    bool isFull() const override;
     Measurement peekOldest() const override;
     void popOldest() override;
 

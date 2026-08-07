@@ -7,6 +7,7 @@
 #include "ErrorState.h"
 #include "Node.h"
 #include "ReadingState.h"
+#include "support/NullDoubles.h"
 
 namespace
 {
@@ -40,27 +41,6 @@ namespace
         Measurement measurementToReturn{};
     };
 
-    class StubPublisher : public Publisher
-    {
-    public:
-        bool publish(const Measurement&) override
-        {
-            return true;
-        }
-    };
-
-    class StubLogger : public Logger
-    {
-    public:
-        void info(const char*) override
-        {
-        }
-
-        void error(const char*) override
-        {
-        }
-    };
-
     class FakeLogger : public Logger
     {
     public:
@@ -79,48 +59,15 @@ namespace
         std::string lastInfoMessage;
         std::vector<std::string> infoMessages;
     };
-
-    class StubMeasurementStore : public MeasurementStore
-    {
-    public:
-        void enqueue(const Measurement&) override
-        {
-        }
-
-        bool isEmpty() const override
-        {
-            return true;
-        }
-
-        Measurement peekOldest() const override
-        {
-            return Measurement{};
-        }
-
-        void popOldest() override
-        {
-        }
-    };
-
-    class FakeClock : public Clock
-    {
-    public:
-        uint64_t nowUnixMillis() override
-        {
-            return currentTime;
-        }
-
-        uint64_t currentTime = 0;
-    };
 }
 
 TEST(ReadingStateTest, ProcessReadsMeasurement)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     node.process();
@@ -131,10 +78,10 @@ TEST(ReadingStateTest, ProcessReadsMeasurement)
 TEST(ReadingStateTest, ProcessStoresMeasurementOnSuccess)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.measurementToReturn = Measurement{0, 404, 25.0f, 50.0f};
     Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
@@ -148,10 +95,10 @@ TEST(ReadingStateTest, ProcessStoresMeasurementOnSuccess)
 TEST(ReadingStateTest, ProcessStampsMeasurementWithCurrentTime)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     clock.currentTime = 1738156800000ULL;
 
     sensor.measurementToReturn = Measurement{999, 404, 25.0f, 50.0f};
@@ -165,10 +112,10 @@ TEST(ReadingStateTest, ProcessStampsMeasurementWithCurrentTime)
 TEST(ReadingStateTest, ProcessUpdatesLastReadingTimeOnSuccess)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     clock.currentTime = 1738156800000ULL;
 
     sensor.measurementToReturn = Measurement{999, 404, 25.0f, 50.0f};
@@ -182,10 +129,10 @@ TEST(ReadingStateTest, ProcessUpdatesLastReadingTimeOnSuccess)
 TEST(ReadingStateTest, ProcessDoesNotUpdateLastReadingTimeOnFailure)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     clock.currentTime = 1738156800000ULL;
     sensor.readMeasurementResult = false;
     Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
@@ -199,10 +146,10 @@ TEST(ReadingStateTest, ProcessDoesNotUpdateLastReadingTimeOnFailure)
 TEST(ReadingStateTest, ProcessTransitionsToErrorOnReadFailure)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
-    StubLogger logger;
-    StubMeasurementStore store;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
     sensor.readMeasurementResult = false;
     Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
@@ -214,10 +161,10 @@ TEST(ReadingStateTest, ProcessTransitionsToErrorOnReadFailure)
 TEST(ReadingStateTest, EnterLogsInfo)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     ReadingState::getInstance().enter(node);
@@ -229,10 +176,10 @@ TEST(ReadingStateTest, EnterLogsInfo)
 TEST(ReadingStateTest, ExitLogsInfo)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 
     ReadingState::getInstance().exit(node);
@@ -244,10 +191,10 @@ TEST(ReadingStateTest, ExitLogsInfo)
 TEST(ReadingStateTest, ProcessLogsMeasurementInfo)
 {
     FakeSensor sensor;
-    StubPublisher publisher;
-    FakeClock clock;
+    NullPublisher publisher;
+    FixedClock clock;
     FakeLogger logger;
-    StubMeasurementStore store;
+    NullMeasurementStore store;
     sensor.measurementToReturn = Measurement{1738156800000ULL, 404, 25.0f, 50.0f};
     Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
 

@@ -8,39 +8,10 @@
 #include "IdleState.h"
 #include "Node.h"
 #include "SendingState.h"
+#include "support/NullDoubles.h"
 
 namespace
 {
-    bool measurementsEqual(const Measurement& a, const Measurement& b)
-    {
-        return a.timestampUnixMillis == b.timestampUnixMillis && a.co2Ppm == b.co2Ppm &&
-            a.temperatureCelsius == b.temperatureCelsius && a.humidityPercent == b.humidityPercent;
-    }
-
-    class StubSensor : public Sensor
-    {
-    public:
-        bool startPeriodicMeasurement() override
-        {
-            return true;
-        }
-
-        bool stopPeriodicMeasurement() override
-        {
-            return true;
-        }
-
-        bool isDataReady() override
-        {
-            return false;
-        }
-
-        bool readMeasurement(Measurement&) override
-        {
-            return false;
-        }
-    };
-
     class FakePublisher : public Publisher
     {
     public:
@@ -67,18 +38,6 @@ namespace
         std::deque<bool> publishResultsQueue;
     };
 
-    class StubLogger : public Logger
-    {
-    public:
-        void info(const char*) override
-        {
-        }
-
-        void error(const char*) override
-        {
-        }
-    };
-
     class FakeLogger : public Logger
     {
     public:
@@ -88,12 +47,16 @@ namespace
             lastInfoMessage = message ? message : "";
         }
 
-        void error(const char*) override
+        void error(const char* message) override
         {
+            ++errorCount;
+            lastErrorMessage = message ? message : "";
         }
 
         int infoCount = 0;
         std::string lastInfoMessage;
+        int errorCount = 0;
+        std::string lastErrorMessage;
     };
 
     class FakeMeasurementStore : public MeasurementStore
@@ -111,6 +74,11 @@ namespace
             return items.empty();
         }
 
+        bool isFull() const override
+        {
+            return isFullResult;
+        }
+
         Measurement peekOldest() const override
         {
             return items.front();
@@ -126,24 +94,16 @@ namespace
         Measurement lastEnqueuedMeasurement{};
         int popCount = 0;
         std::deque<Measurement> items;
-    };
-
-    class StubClock : public Clock
-    {
-    public:
-        uint64_t nowUnixMillis() override
-        {
-            return 0;
-        }
+        bool isFullResult = false;
     };
 }
 
 TEST(SendingStateTest, ProcessPublishesMeasurement)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
-    StubLogger logger;
+    FixedClock clock;
+    NullLogger logger;
     FakeMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
     node.setMeasurement(Measurement{1738156800000ULL, 404, 25.0f, 50.0f});
@@ -159,10 +119,10 @@ TEST(SendingStateTest, ProcessPublishesMeasurement)
 
 TEST(SendingStateTest, ProcessTransitionsToIdleOnPublishSuccess)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
-    StubLogger logger;
+    FixedClock clock;
+    NullLogger logger;
     FakeMeasurementStore store;
     publisher.publishResult = true;
     Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
@@ -174,10 +134,10 @@ TEST(SendingStateTest, ProcessTransitionsToIdleOnPublishSuccess)
 
 TEST(SendingStateTest, ProcessTransitionsToErrorOnPublishFailure)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
-    StubLogger logger;
+    FixedClock clock;
+    NullLogger logger;
     FakeMeasurementStore store;
     publisher.publishResult = false;
     Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
@@ -189,10 +149,10 @@ TEST(SendingStateTest, ProcessTransitionsToErrorOnPublishFailure)
 
 TEST(SendingStateTest, ProcessEnqueuesMeasurementInStoreOnPublishFailure)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
-    StubLogger logger;
+    FixedClock clock;
+    NullLogger logger;
     FakeMeasurementStore store;
     publisher.publishResult = false;
     Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
@@ -204,12 +164,47 @@ TEST(SendingStateTest, ProcessEnqueuesMeasurementInStoreOnPublishFailure)
     EXPECT_TRUE(measurementsEqual(store.lastEnqueuedMeasurement, Measurement{1738156800000ULL, 404, 25.0f, 50.0f}));
 }
 
+TEST(SendingStateTest, ProcessLogsErrorWhenStoreIsFullBeforeEnqueueingOnPublishFailure)
+{
+    NullSensor sensor;
+    FakePublisher publisher;
+    FixedClock clock;
+    FakeLogger logger;
+    FakeMeasurementStore store;
+    publisher.publishResult = false;
+    store.isFullResult = true;
+    Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
+    node.setMeasurement(Measurement{1738156800000ULL, 404, 25.0f, 50.0f});
+
+    node.process();
+
+    EXPECT_EQ(logger.errorCount, 1);
+    EXPECT_FALSE(logger.lastErrorMessage.empty());
+}
+
+TEST(SendingStateTest, ProcessDoesNotLogWhenStoreIsNotFullBeforeEnqueueingOnPublishFailure)
+{
+    NullSensor sensor;
+    FakePublisher publisher;
+    FixedClock clock;
+    FakeLogger logger;
+    FakeMeasurementStore store;
+    publisher.publishResult = false;
+    store.isFullResult = false;
+    Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
+    node.setMeasurement(Measurement{1738156800000ULL, 404, 25.0f, 50.0f});
+
+    node.process();
+
+    EXPECT_EQ(logger.errorCount, 0);
+}
+
 TEST(SendingStateTest, ProcessDoesNotEnqueueWhenPublishSucceeds)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
-    StubLogger logger;
+    FixedClock clock;
+    NullLogger logger;
     FakeMeasurementStore store;
     publisher.publishResult = true;
     Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
@@ -222,10 +217,10 @@ TEST(SendingStateTest, ProcessDoesNotEnqueueWhenPublishSucceeds)
 
 TEST(SendingStateTest, ProcessDrainsBacklogOnPublishSuccess)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
-    StubLogger logger;
+    FixedClock clock;
+    NullLogger logger;
     FakeMeasurementStore store;
     publisher.publishResult = true;
 
@@ -251,10 +246,10 @@ TEST(SendingStateTest, ProcessDrainsBacklogOnPublishSuccess)
 
 TEST(SendingStateTest, ProcessStopsDrainingBacklogOnFirstDrainFailure)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
-    StubLogger logger;
+    FixedClock clock;
+    NullLogger logger;
     FakeMeasurementStore store;
 
     const Measurement backlog1{1000, 100, 20.0f, 40.0f};
@@ -282,12 +277,34 @@ TEST(SendingStateTest, ProcessStopsDrainingBacklogOnFirstDrainFailure)
     EXPECT_EQ(node.getState(), &IdleState::getInstance());
 }
 
+TEST(SendingStateTest, ProcessLogsErrorWhenBacklogDrainStopsEarly)
+{
+    NullSensor sensor;
+    FakePublisher publisher;
+    FixedClock clock;
+    FakeLogger logger;
+    FakeMeasurementStore store;
+
+    store.items.push_back(Measurement{1000, 100, 20.0f, 40.0f});
+
+    // Live publish succeeds, but the backlog publish fails.
+    publisher.publishResultsQueue = {true, false};
+
+    Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
+    node.setMeasurement(Measurement{3000, 300, 22.0f, 42.0f});
+
+    node.process();
+
+    EXPECT_EQ(logger.errorCount, 1);
+    EXPECT_FALSE(logger.lastErrorMessage.empty());
+}
+
 TEST(SendingStateTest, ProcessDoesNotDrainBacklogWhenLivePublishFails)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
-    StubLogger logger;
+    FixedClock clock;
+    NullLogger logger;
     FakeMeasurementStore store;
 
     const Measurement backlog1{1000, 100, 20.0f, 40.0f};
@@ -310,9 +327,9 @@ TEST(SendingStateTest, ProcessDoesNotDrainBacklogWhenLivePublishFails)
 
 TEST(SendingStateTest, EnterLogsInfo)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
+    FixedClock clock;
     FakeLogger logger;
     FakeMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());
@@ -325,9 +342,9 @@ TEST(SendingStateTest, EnterLogsInfo)
 
 TEST(SendingStateTest, ExitLogsInfo)
 {
-    StubSensor sensor;
+    NullSensor sensor;
     FakePublisher publisher;
-    StubClock clock;
+    FixedClock clock;
     FakeLogger logger;
     FakeMeasurementStore store;
     Node node(sensor, publisher, clock, logger, store, SendingState::getInstance());

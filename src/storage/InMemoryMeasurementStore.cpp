@@ -27,6 +27,11 @@ bool InMemoryMeasurementStore::isEmpty() const
     return size_ == 0;
 }
 
+bool InMemoryMeasurementStore::isFull() const
+{
+    return size_ == capacity_;
+}
+
 Measurement InMemoryMeasurementStore::peekOldest() const
 {
     return measurements_[startIndex_];

@@ -1,6 +1,6 @@
 #include "MqttPublisher.h"
 
-#include <cstdio>
+#include "mqtt/MeasurementPayload.h"
 
 namespace
 {
@@ -63,18 +63,28 @@ bool MqttPublisher::publish(const Measurement& measurement)
     }
 
     char payload[192];
-    const int length = snprintf(payload, sizeof(payload),
-                                "{\"room\":\"%s\", \"timestamp\":%llu,\"co2Ppm\":%u, \"temperatureCelsius\":%.2f,\"humidityPercent\":%.2f}",
-                                room_.c_str(), static_cast<unsigned long long>(measurement.timestampUnixMillis),
-                                measurement.co2Ppm, measurement.temperatureCelsius, measurement.humidityPercent);
+    std::size_t length = 0;
+    if (!formatMeasurementPayload(room_.c_str(), measurement, payload, sizeof(payload), length))
+    {
+        return false;
+    }
 
     xSemaphoreTake(publishAcked_, 0);
 
-    pendingMsgId_ = esp_mqtt_client_publish(client_, topic_.c_str(), payload, length, 1, 0);
+    pendingMsgId_ = esp_mqtt_client_publish(client_, topic_.c_str(), payload, static_cast<int>(length), 1, 0);
     if (pendingMsgId_ == -1)
     {
         return false;
     }
 
-    return xSemaphoreTake(publishAcked_, pdMS_TO_TICKS(kPublishAckTimeoutMs)) == pdTRUE;
+    const bool acked = xSemaphoreTake(publishAcked_, pdMS_TO_TICKS(kPublishAckTimeoutMs)) == pdTRUE;
+    if (!acked)
+    {
+        // Don't leave a timed-out id sitting in pendingMsgId_: MQTT packet
+        // ids get reused over a node's lifetime, and a late ack for this
+        // message arriving after we've already given up could otherwise be
+        // misattributed to a future, unrelated publish.
+        pendingMsgId_ = -1;
+    }
+    return acked;
 }

@@ -44,6 +44,27 @@ most boards silkscreen them as `SDA`/`SCL` directly). Note that GPIO6-11 are
 *not* usable for anything — they're wired internally to the module's SPI
 flash and aren't broken out.
 
+## Measurement behavior
+
+The SCD41 runs in **low-power periodic measurement mode** (~30s internal
+sample rate) rather than normal mode (~5s) — the node only ever acts on one
+reading every 15 minutes anyway, so there's no benefit to the faster internal
+rate, and low-power mode draws less current.
+
+The node only reads/stores/publishes a measurement **once every 15
+minutes** (`kReadingIntervalMs` in `IdleState.cpp`), tracked via
+`Node::getLastReadingTime()`/`setLastReadingTime()`. This same 15-minute gate
+also covers the sensor's post-restart settling time: every time `InitState`
+runs (at boot, or after any `Error`-triggered restart), it stops and restarts
+periodic measurement, which resets the SCD41's internal signal compensation —
+readings taken immediately after aren't yet accurate (per Sensirion's
+datasheet, response time to 63% of a step change is ~60s for CO2, ~90s for
+humidity, ~120s for temperature; full settling takes a few time constants
+longer). `InitState` seeds the last-reading-time to "now" on a successful
+restart, so the very next reading is naturally delayed by the full 15-minute
+interval - comfortably past the settling window - without needing a separate
+discard-first-reading mechanism.
+
 ## Building the firmware
 
 ```sh

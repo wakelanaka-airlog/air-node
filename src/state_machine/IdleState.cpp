@@ -26,6 +26,15 @@ void IdleState::process(Node& node)
     }
 
     const uint64_t now = node.getClock().nowUnixMillis();
+    if (now < node.getLastReadingTime())
+    {
+        // Clock stepped backward (e.g. a periodic SNTP resync correction) -
+        // restart the interval instead of underflowing the subtraction below
+        // into an immediate, out-of-cycle reading.
+        node.setLastReadingTime(now);
+        return;
+    }
+
     if (now - node.getLastReadingTime() < kReadingIntervalMs)
     {
         return;
