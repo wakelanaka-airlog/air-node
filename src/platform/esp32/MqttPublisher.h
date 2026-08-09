@@ -12,8 +12,7 @@
 class MqttPublisher : public Publisher
 {
 public:
-    MqttPublisher(const char* brokerUri, const char* username, const char* password, std::string topic,
-                  std::string room);
+    MqttPublisher(const char* brokerUri, const char* username, const char* password, std::string topic);
     ~MqttPublisher() override;
 
     MqttPublisher(const MqttPublisher&) = delete;
@@ -26,7 +25,6 @@ private:
 
     esp_mqtt_client_handle_t client_;
     std::string topic_;
-    std::string room_;
     std::atomic<bool> connected_{false};
     SemaphoreHandle_t publishAcked_;
     std::atomic<int> pendingMsgId_{-1};

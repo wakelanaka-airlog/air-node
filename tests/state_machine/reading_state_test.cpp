@@ -36,6 +36,11 @@ namespace
             return readMeasurementResult;
         }
 
+        bool setTemperatureOffset(float) override
+        {
+            return true;
+        }
+
         int readMeasurementCount = 0;
         bool readMeasurementResult = true;
         Measurement measurementToReturn{};
@@ -107,40 +112,6 @@ TEST(ReadingStateTest, ProcessStampsMeasurementWithCurrentTime)
     node.process();
 
     EXPECT_EQ(node.getMeasurement().timestampUnixMillis, 1738156800000ULL);
-}
-
-TEST(ReadingStateTest, ProcessUpdatesLastReadingTimeOnSuccess)
-{
-    FakeSensor sensor;
-    NullPublisher publisher;
-    FixedClock clock;
-    NullLogger logger;
-    NullMeasurementStore store;
-    clock.currentTime = 1738156800000ULL;
-
-    sensor.measurementToReturn = Measurement{999, 404, 25.0f, 50.0f};
-    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
-
-    node.process();
-
-    EXPECT_EQ(node.getLastReadingTime(), 1738156800000ULL);
-}
-
-TEST(ReadingStateTest, ProcessDoesNotUpdateLastReadingTimeOnFailure)
-{
-    FakeSensor sensor;
-    NullPublisher publisher;
-    FixedClock clock;
-    NullLogger logger;
-    NullMeasurementStore store;
-    clock.currentTime = 1738156800000ULL;
-    sensor.readMeasurementResult = false;
-    Node node(sensor, publisher, clock, logger, store, ReadingState::getInstance());
-    node.setLastReadingTime(123);
-
-    node.process();
-
-    EXPECT_EQ(node.getLastReadingTime(), 123ULL);
 }
 
 TEST(ReadingStateTest, ProcessTransitionsToErrorOnReadFailure)

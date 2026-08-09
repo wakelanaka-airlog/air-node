@@ -8,8 +8,8 @@ namespace
 }
 
 MqttPublisher::MqttPublisher(const char* brokerUri, const char* username, const char* password,
-                             std::string topic, std::string room)
-    : topic_{std::move(topic)}, room_{std::move(room)}
+                             std::string topic)
+    : topic_{std::move(topic)}
 {
     publishAcked_ = xSemaphoreCreateBinary();
 
@@ -64,7 +64,7 @@ bool MqttPublisher::publish(const Measurement& measurement)
 
     char payload[192];
     std::size_t length = 0;
-    if (!formatMeasurementPayload(room_.c_str(), measurement, payload, sizeof(payload), length))
+    if (!formatMeasurementPayload(measurement, payload, sizeof(payload), length))
     {
         return false;
     }

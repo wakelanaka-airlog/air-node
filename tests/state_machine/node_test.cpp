@@ -156,6 +156,34 @@ TEST(NodeTest, ConstructorSetsMeasurementStore)
     EXPECT_EQ(&node.getMeasurementStore(), &store);
 }
 
+TEST(NodeTest, ConstructorDefaultsTemperatureOffsetToScd41FactoryDefault)
+{
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
+    StubState state;
+
+    Node node(sensor, publisher, clock, logger, store, state);
+
+    EXPECT_FLOAT_EQ(node.getTemperatureOffsetCelsius(), 4.f);
+}
+
+TEST(NodeTest, ConstructorSetsTemperatureOffsetWhenProvided)
+{
+    NullSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
+    StubState state;
+
+    Node node(sensor, publisher, clock, logger, store, state, 0.f);
+
+    EXPECT_FLOAT_EQ(node.getTemperatureOffsetCelsius(), 0.f);
+}
+
 TEST(NodeTest, ProcessDelegatesToCurrentState)
 {
     NullSensor sensor;

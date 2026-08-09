@@ -11,4 +11,5 @@ public:
     virtual bool stopPeriodicMeasurement() = 0;
     virtual bool isDataReady() = 0;
     virtual bool readMeasurement(Measurement& measurement) = 0;
+    virtual bool setTemperatureOffset(float offsetCelsius) = 0;
 };

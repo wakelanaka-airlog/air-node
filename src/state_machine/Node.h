@@ -12,7 +12,7 @@ class Node
 {
 public:
     Node(Sensor& sensor, Publisher& publisher, Clock& clock, Logger& logger, MeasurementStore& store,
-         NodeState& initialState);
+         NodeState& initialState, float temperatureOffsetCelsius = 4.f);
 
     void process();
     void transitionTo(NodeState& state);
@@ -24,8 +24,9 @@ public:
     void setMeasurement(const Measurement& measurement);
     [[nodiscard]] const Measurement& getMeasurement() const;
     [[nodiscard]] MeasurementStore& getMeasurementStore() const;
-    void setLastReadingTime(uint64_t timestampUnixMillis);
-    [[nodiscard]] uint64_t getLastReadingTime() const;
+    void setLastRestartTime(uint64_t timestampUnixMillis);
+    [[nodiscard]] uint64_t getLastRestartTime() const;
+    [[nodiscard]] float getTemperatureOffsetCelsius() const;
 
 private:
     Sensor& sensor_;
@@ -35,5 +36,6 @@ private:
     NodeState* state_;
     MeasurementStore& store_;
     Measurement measurement_;
-    uint64_t lastReadingTimeUnixMillis_ = 0;
+    uint64_t lastRestartTimeUnixMillis_ = 0;
+    float temperatureOffsetCelsius_;
 };

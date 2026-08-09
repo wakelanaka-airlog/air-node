@@ -47,23 +47,42 @@ flash and aren't broken out.
 ## Measurement behavior
 
 The SCD41 runs in **low-power periodic measurement mode** (~30s internal
-sample rate) rather than normal mode (~5s) — the node only ever acts on one
-reading every 15 minutes anyway, so there's no benefit to the faster internal
-rate, and low-power mode draws less current.
+sample rate) rather than normal mode (~5s) - low-power mode draws less
+current, and the node has no reason to poll faster than the sensor itself
+produces new samples.
 
-The node only reads/stores/publishes a measurement **once every 15
-minutes** (`kReadingIntervalMs` in `IdleState.cpp`), tracked via
-`Node::getLastReadingTime()`/`setLastReadingTime()`. This same 15-minute gate
-also covers the sensor's post-restart settling time: every time `InitState`
-runs (at boot, or after any `Error`-triggered restart), it stops and restarts
-periodic measurement, which resets the SCD41's internal signal compensation —
-readings taken immediately after aren't yet accurate (per Sensirion's
-datasheet, response time to 63% of a step change is ~60s for CO2, ~90s for
-humidity, ~120s for temperature; full settling takes a few time constants
-longer). `InitState` seeds the last-reading-time to "now" on a successful
-restart, so the very next reading is naturally delayed by the full 15-minute
-interval - comfortably past the settling window - without needing a separate
-discard-first-reading mechanism.
+The node reads/stores/publishes **every reading the SCD41 produces** - there
+is no reporting-interval throttle in the firmware, and the collector saves
+every one of them into TimescaleDB's raw `air_measurements` hypertable.
+Anything coarser (e.g. a 15-minute-average view) is a downstream concern,
+handled by a TimescaleDB continuous aggregate
+(`hub/timescaledb/init/003-air-measurements-continuous-aggregate.sql`), not
+the node.
+
+The one thing the node does still gate on is the sensor's post-restart
+**settling time**: every time `InitState` runs (at boot, or after any
+`Error`-triggered restart), it stops and restarts periodic measurement, which
+resets the SCD41's internal signal compensation - readings taken immediately
+after aren't yet accurate (per Sensirion's datasheet, response time to 63% of
+a step change is ~60s for CO2, ~90s for humidity, ~120s for temperature; full
+settling takes a few time constants longer). `InitState` seeds a restart
+timestamp (`Node::getLastRestartTime()`/`setLastRestartTime()`) on a
+successful restart, and `IdleState` withholds the first post-restart reading
+until `kSensorSettlingDelayMs` (10 minutes, `IdleState.cpp`) has passed -
+after that, every ready reading is taken and published immediately.
+
+If a publish fails (MQTT/WiFi outage), `SendingState` queues the reading in
+`InMemoryMeasurementStore` - a RAM-only ring buffer - and drains it on a
+later successful publish, so a failed send doesn't stop the node from
+continuing to take new readings. `kMeasurementStoreCapacity` (`app_main.cpp`)
+is derived from the SCD41's ~30s reading interval and a target overnight
+(12h) outage-survival window, not a fixed number - it's sized to whatever
+that math currently works out to, so a future cadence change won't silently
+shrink how long an outage the node can absorb (as happened here: this
+constant was originally sized for once-every-15-minutes readings, before the
+node moved to publishing every reading it takes). Being RAM-only, the backlog
+doesn't survive a power cycle - acceptable for this project's lossy-telemetry
+use case, not a guarantee.
 
 ## Building the firmware
 
@@ -88,3 +107,27 @@ production mode (errors only) to development mode (verbose - includes the
 state machine's entering/leaving-state logs). It's a general-purpose
 dev-mode flag, meant to gate any future development-only feature, not just
 logging.
+
+### Flashing multiple nodes
+
+`idf.py menuconfig` writes to a single `firmware/sdkconfig` file, which is
+gitignored (it holds `WIFI_PASSWORD`/`MQTT_PASSWORD` in plaintext) but does
+persist as-is across ordinary `idf.py build`/`flash` calls - config is only
+lost if you delete that file yourself. The one thing it can't do is hold two
+nodes' settings at once: each physical node needs its own `NODE_ROOM` and
+`NODE_TEMPERATURE_OFFSET_CENTIDEGREES_C` (see Measurement behavior above),
+so reusing the same `sdkconfig` file to flash a second node overwrites the
+first node's settings.
+
+To keep one persisted, gitignored config per node, override ESP-IDF's
+`SDKCONFIG` (and build directory, since generated headers are
+config-dependent) per node:
+
+```sh
+idf.py -D SDKCONFIG=sdkconfig.living_room -B build.living_room menuconfig
+idf.py -D SDKCONFIG=sdkconfig.living_room -B build.living_room build
+idf.py -D SDKCONFIG=sdkconfig.living_room -B build.living_room -p <PORT> flash monitor
+```
+
+`export SDKCONFIG=sdkconfig.living_room` in your shell avoids repeating the
+first flag for a session spent flashing just that one node.

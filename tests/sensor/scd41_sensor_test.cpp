@@ -280,3 +280,79 @@ TEST(Scd41SensorTest, ReadMeasurementDelaysBeforeReading)
     EXPECT_EQ(delay.callCount, 1);
     EXPECT_EQ(delay.lastMilliseconds, 1u);
 }
+
+TEST(Scd41SensorTest, SetTemperatureOffsetSendsCorrectCommand)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    Scd41Sensor sensor(bus, delay);
+
+    sensor.setTemperatureOffset(0.f);
+
+    EXPECT_EQ(bus.writeCount, 1);
+    EXPECT_EQ(bus.lastWriteAddress, Scd41Sensor::i2cAddress);
+    ASSERT_EQ(bus.lastWriteData.size(), 5u);
+    EXPECT_EQ(bus.lastWriteData[0], 0x24);
+    EXPECT_EQ(bus.lastWriteData[1], 0x1D);
+}
+
+TEST(Scd41SensorTest, SetTemperatureOffsetEncodesValueAndCrcPerDatasheetExample)
+{
+    // Datasheet example (section 3.6.1): set offset to 5.4 degC ->
+    // word 0x07e6, CRC 0x48.
+    FakeI2cBus bus;
+    FakeDelay delay;
+    Scd41Sensor sensor(bus, delay);
+
+    sensor.setTemperatureOffset(5.4f);
+
+    ASSERT_EQ(bus.lastWriteData.size(), 5u);
+    EXPECT_EQ(bus.lastWriteData[2], 0x07);
+    EXPECT_EQ(bus.lastWriteData[3], 0xE6);
+    EXPECT_EQ(bus.lastWriteData[4], 0x48);
+}
+
+TEST(Scd41SensorTest, SetTemperatureOffsetEncodesZeroAsZeroWord)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    Scd41Sensor sensor(bus, delay);
+
+    sensor.setTemperatureOffset(0.f);
+
+    ASSERT_EQ(bus.lastWriteData.size(), 5u);
+    EXPECT_EQ(bus.lastWriteData[2], 0x00);
+    EXPECT_EQ(bus.lastWriteData[3], 0x00);
+}
+
+TEST(Scd41SensorTest, SetTemperatureOffsetDelaysAfterWriting)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    Scd41Sensor sensor(bus, delay);
+
+    sensor.setTemperatureOffset(0.f);
+
+    EXPECT_EQ(delay.callCount, 1);
+    EXPECT_EQ(delay.lastMilliseconds, 1u);
+}
+
+TEST(Scd41SensorTest, SetTemperatureOffsetReturnsTrueOnSuccessfulWrite)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    bus.writeResult = true;
+    Scd41Sensor sensor(bus, delay);
+
+    EXPECT_TRUE(sensor.setTemperatureOffset(0.f));
+}
+
+TEST(Scd41SensorTest, SetTemperatureOffsetReturnsFalseOnFailedWrite)
+{
+    FakeI2cBus bus;
+    FakeDelay delay;
+    bus.writeResult = false;
+    Scd41Sensor sensor(bus, delay);
+
+    EXPECT_FALSE(sensor.setTemperatureOffset(0.f));
+}

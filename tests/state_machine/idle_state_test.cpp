@@ -33,6 +33,11 @@ namespace
             return false;
         }
 
+        bool setTemperatureOffset(float) override
+        {
+            return true;
+        }
+
         int isDataReadyCount = 0;
         bool isDataReadyResult = false;
     };
@@ -85,7 +90,7 @@ TEST(IdleStateTest, ProcessTransitionsToReadingWhenDataIsReadyOnFirstEverCheck)
     EXPECT_EQ(node.getState(), &ReadingState::getInstance());
 }
 
-TEST(IdleStateTest, ProcessStaysInIdleWhenReadingIntervalHasNotElapsed)
+TEST(IdleStateTest, ProcessStaysInIdleWhileSensorIsStillSettling)
 {
     FakeSensor sensor;
     NullPublisher publisher;
@@ -95,14 +100,14 @@ TEST(IdleStateTest, ProcessStaysInIdleWhenReadingIntervalHasNotElapsed)
     NullMeasurementStore store;
     sensor.isDataReadyResult = true;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
-    node.setLastReadingTime(clock.currentTime - 600000ULL); // 10 minutes ago
+    node.setLastRestartTime(clock.currentTime - 300000ULL); // 5 minutes ago
 
     node.process();
 
     EXPECT_EQ(node.getState(), &IdleState::getInstance());
 }
 
-TEST(IdleStateTest, ProcessTransitionsToReadingWhenReadingIntervalHasElapsed)
+TEST(IdleStateTest, ProcessTransitionsToReadingOnceSensorHasSettled)
 {
     FakeSensor sensor;
     NullPublisher publisher;
@@ -112,7 +117,7 @@ TEST(IdleStateTest, ProcessTransitionsToReadingWhenReadingIntervalHasElapsed)
     NullMeasurementStore store;
     sensor.isDataReadyResult = true;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
-    node.setLastReadingTime(clock.currentTime - 1000000ULL); // ~16.7 minutes ago
+    node.setLastRestartTime(clock.currentTime - 660000ULL); // 11 minutes ago
 
     node.process();
 
@@ -128,7 +133,7 @@ TEST(IdleStateTest, ProcessStaysInIdleWhenClockStepsBackward)
     NullMeasurementStore store;
     sensor.isDataReadyResult = true;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
-    node.setLastReadingTime(5000000ULL);
+    node.setLastRestartTime(5000000ULL);
     clock.currentTime = 4000000ULL; // clock stepped backward, e.g. an SNTP resync correction
 
     node.process();
@@ -136,7 +141,7 @@ TEST(IdleStateTest, ProcessStaysInIdleWhenClockStepsBackward)
     EXPECT_EQ(node.getState(), &IdleState::getInstance());
 }
 
-TEST(IdleStateTest, ProcessResetsLastReadingTimeToNowWhenClockStepsBackward)
+TEST(IdleStateTest, ProcessResetsLastRestartTimeToNowWhenClockStepsBackward)
 {
     FakeSensor sensor;
     NullPublisher publisher;
@@ -145,15 +150,15 @@ TEST(IdleStateTest, ProcessResetsLastReadingTimeToNowWhenClockStepsBackward)
     NullMeasurementStore store;
     sensor.isDataReadyResult = true;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
-    node.setLastReadingTime(5000000ULL);
+    node.setLastRestartTime(5000000ULL);
     clock.currentTime = 4000000ULL;
 
     node.process();
 
-    EXPECT_EQ(node.getLastReadingTime(), 4000000ULL);
+    EXPECT_EQ(node.getLastRestartTime(), 4000000ULL);
 }
 
-TEST(IdleStateTest, ProcessTransitionsToReadingAfterFullIntervalFollowingClockStepBackward)
+TEST(IdleStateTest, ProcessTransitionsToReadingAfterFullSettlingDelayFollowingClockStepBackward)
 {
     FakeSensor sensor;
     NullPublisher publisher;
@@ -162,11 +167,11 @@ TEST(IdleStateTest, ProcessTransitionsToReadingAfterFullIntervalFollowingClockSt
     NullMeasurementStore store;
     sensor.isDataReadyResult = true;
     Node node(sensor, publisher, clock, logger, store, IdleState::getInstance());
-    node.setLastReadingTime(5000000ULL);
+    node.setLastRestartTime(5000000ULL);
     clock.currentTime = 4000000ULL; // clock steps backward, absorbed without transitioning
     node.process();
 
-    clock.currentTime = 4000000ULL + 15 * 60 * 1000; // full interval elapses from the new baseline
+    clock.currentTime = 4000000ULL + 10 * 60 * 1000; // full settling delay elapses from the new baseline
     node.process();
 
     EXPECT_EQ(node.getState(), &ReadingState::getInstance());

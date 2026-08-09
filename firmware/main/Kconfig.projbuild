@@ -24,9 +24,24 @@ menu "wakelanaka-airlog Node Configuration"
         string "Room this node is placed in (e.g. living_room)"
         default ""
 
+    config NODE_TEMPERATURE_OFFSET_CENTIDEGREES_C
+        int "SCD41 temperature offset, in hundredths of a degree Celsius"
+        default 400
+        help
+            Corrects for this node's enclosure self-heating (SCD41 datasheet
+            section 3.6.1). The sensor's factory default is 4.00 degC,
+            calibrated for Sensirion's own eval board - not this enclosure.
+            To recalibrate: compare a stable reading from this node against a
+            trusted reference thermometer at thermal equilibrium (>20 min
+            uptime), then compute the new value as:
+                new_offset = old_offset - (reference_temp - node_temp)
+            e.g. if this node reads 22.00 degC and the reference reads 26.00
+            degC with the factory default of 400 (4.00 degC) applied, the
+            corrected value is 400 - (2600 - 2200) = 0.
+
     config SNTP_SERVER
         string "SNTP server for time sync"
-        default "pool.ntp.org"
+        default "ntp.metas.ch"
 
     config NODE_DEVELOPMENT_MODE
         bool "Enable development mode (verbose logging)"

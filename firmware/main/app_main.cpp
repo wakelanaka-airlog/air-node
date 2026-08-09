@@ -30,7 +30,14 @@ namespace
 {
     constexpr const char* kTag = "app_main";
     constexpr uint32_t kWifiConnectTimeoutMs = 30000;
-    constexpr std::size_t kMeasurementStoreCapacity = 64;
+
+    // SCD41 low-power periodic mode samples every ~30s; sized to survive a
+    // 12-hour (overnight) MQTT/WiFi outage before the oldest backlogged
+    // reading gets overwritten - see README.md's Measurement behavior section.
+    constexpr uint32_t kScd41ReadingIntervalSeconds = 30;
+    constexpr uint32_t kOvernightOutageSurvivalHours = 12;
+    constexpr std::size_t kMeasurementStoreCapacity =
+        kOvernightOutageSurvivalHours * 3600 / kScd41ReadingIntervalSeconds;
 }
 
 extern "C" void app_main()
@@ -68,13 +75,15 @@ extern "C" void app_main()
     static Scd41Sensor scd41Sensor{i2cBus, delay};
 
     const std::string topic = std::string("wakelanaka-airlog/air-node/") + CONFIG_NODE_ROOM + "/measurement";
-    static MqttPublisher publisher{
-        CONFIG_MQTT_BROKER_URI, CONFIG_MQTT_USERNAME, CONFIG_MQTT_PASSWORD, topic, CONFIG_NODE_ROOM
-    };
+    static MqttPublisher publisher{CONFIG_MQTT_BROKER_URI, CONFIG_MQTT_USERNAME, CONFIG_MQTT_PASSWORD, topic};
 
     static InMemoryMeasurementStore measurementStore{kMeasurementStoreCapacity};
 
-    static Node node{scd41Sensor, publisher, clock, filteringLogger, measurementStore, InitState::getInstance()};
+    constexpr float temperatureOffsetCelsius = CONFIG_NODE_TEMPERATURE_OFFSET_CENTIDEGREES_C / 100.f;
+    static Node node{
+        scd41Sensor, publisher, clock, filteringLogger, measurementStore, InitState::getInstance(),
+        temperatureOffsetCelsius
+    };
 
     while (true)
     {

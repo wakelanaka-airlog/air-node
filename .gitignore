@@ -3,8 +3,12 @@
 
 # ESP-IDF firmware build
 /firmware/build/
+/firmware/build.*/
 /firmware/sdkconfig
 /firmware/sdkconfig.old
+/firmware/sdkconfig.*
+!/firmware/sdkconfig.defaults
+!/firmware/sdkconfig.defaults.*
 /firmware/managed_components/
 /firmware/dependencies.lock
 /firmware/.cache/

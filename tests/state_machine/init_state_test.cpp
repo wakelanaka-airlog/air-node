@@ -38,10 +38,21 @@ namespace
             return false;
         }
 
+        bool setTemperatureOffset(float offsetCelsius) override
+        {
+            ++setTemperatureOffsetCount;
+            lastTemperatureOffsetCelsius = offsetCelsius;
+            callOrder.push_back("setTemperatureOffset");
+            return setTemperatureOffsetResult;
+        }
+
         int startPeriodicMeasurementCount = 0;
         bool startPeriodicMeasurementResult = true;
         int stopPeriodicMeasurementCount = 0;
         bool stopPeriodicMeasurementResult = true;
+        int setTemperatureOffsetCount = 0;
+        bool setTemperatureOffsetResult = true;
+        float lastTemperatureOffsetCelsius = 0.f;
         std::vector<std::string> callOrder;
     };
 
@@ -102,9 +113,41 @@ TEST(InitStateTest, ProcessStopsBeforeStarting)
 
     node.process();
 
-    ASSERT_EQ(sensor.callOrder.size(), 2u);
+    ASSERT_EQ(sensor.callOrder.size(), 3u);
     EXPECT_EQ(sensor.callOrder[0], "stop");
-    EXPECT_EQ(sensor.callOrder[1], "start");
+    EXPECT_EQ(sensor.callOrder[2], "start");
+}
+
+TEST(InitStateTest, ProcessSetsTemperatureOffset)
+{
+    FakeSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, InitState::getInstance(), 1.5f);
+
+    node.process();
+
+    EXPECT_EQ(sensor.setTemperatureOffsetCount, 1);
+    EXPECT_FLOAT_EQ(sensor.lastTemperatureOffsetCelsius, 1.5f);
+}
+
+TEST(InitStateTest, ProcessSetsTemperatureOffsetAfterStopAndBeforeStart)
+{
+    FakeSensor sensor;
+    NullPublisher publisher;
+    FixedClock clock;
+    NullLogger logger;
+    NullMeasurementStore store;
+    Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
+
+    node.process();
+
+    ASSERT_EQ(sensor.callOrder.size(), 3u);
+    EXPECT_EQ(sensor.callOrder[0], "stop");
+    EXPECT_EQ(sensor.callOrder[1], "setTemperatureOffset");
+    EXPECT_EQ(sensor.callOrder[2], "start");
 }
 
 TEST(InitStateTest, ProcessTransitionsToIdleOnSuccess)
@@ -122,7 +165,7 @@ TEST(InitStateTest, ProcessTransitionsToIdleOnSuccess)
     EXPECT_EQ(node.getState(), &IdleState::getInstance());
 }
 
-TEST(InitStateTest, ProcessSeedsLastReadingTimeOnSuccess)
+TEST(InitStateTest, ProcessSeedsLastRestartTimeOnSuccess)
 {
     FakeSensor sensor;
     NullPublisher publisher;
@@ -135,10 +178,10 @@ TEST(InitStateTest, ProcessSeedsLastReadingTimeOnSuccess)
 
     node.process();
 
-    EXPECT_EQ(node.getLastReadingTime(), 1738156800000ULL);
+    EXPECT_EQ(node.getLastRestartTime(), 1738156800000ULL);
 }
 
-TEST(InitStateTest, ProcessDoesNotSeedLastReadingTimeOnFailure)
+TEST(InitStateTest, ProcessDoesNotSeedLastRestartTimeOnFailure)
 {
     FakeSensor sensor;
     NullPublisher publisher;
@@ -148,11 +191,11 @@ TEST(InitStateTest, ProcessDoesNotSeedLastReadingTimeOnFailure)
     NullMeasurementStore store;
     sensor.startPeriodicMeasurementResult = false;
     Node node(sensor, publisher, clock, logger, store, InitState::getInstance());
-    node.setLastReadingTime(123);
+    node.setLastRestartTime(123);
 
     node.process();
 
-    EXPECT_EQ(node.getLastReadingTime(), 123ULL);
+    EXPECT_EQ(node.getLastRestartTime(), 123ULL);
 }
 
 TEST(InitStateTest, ProcessTransitionsToErrorOnFailure)

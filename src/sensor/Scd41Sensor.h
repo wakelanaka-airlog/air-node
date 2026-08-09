@@ -17,6 +17,7 @@ public:
     bool stopPeriodicMeasurement() override;
     bool isDataReady() override;
     bool readMeasurement(Measurement& measurement) override;
+    bool setTemperatureOffset(float offsetCelsius) override;
 
 private:
     static uint8_t computeCrc8(const uint8_t* data, uint16_t count);

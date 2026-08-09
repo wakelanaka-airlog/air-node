@@ -4,7 +4,11 @@
 
 namespace
 {
-    constexpr uint64_t kReadingIntervalMs = 15 * 60 * 1000;
+    // Per SCD41 datasheet: response time to 63% of a step change is ~120s for
+    // temperature (the slowest of the three signals) after InitState resets
+    // the sensor's internal signal compensation; full settling takes a few
+    // time constants longer. 10 minutes is a conservative margin past that.
+    constexpr uint64_t kSensorSettlingDelayMs = 10 * 60 * 1000;
 }
 
 IdleState& IdleState::getInstance()
@@ -26,16 +30,16 @@ void IdleState::process(Node& node)
     }
 
     const uint64_t now = node.getClock().nowUnixMillis();
-    if (now < node.getLastReadingTime())
+    if (now < node.getLastRestartTime())
     {
         // Clock stepped backward (e.g. a periodic SNTP resync correction) -
-        // restart the interval instead of underflowing the subtraction below
-        // into an immediate, out-of-cycle reading.
-        node.setLastReadingTime(now);
+        // restart the settling window instead of underflowing the
+        // subtraction below into treating the sensor as already settled.
+        node.setLastRestartTime(now);
         return;
     }
 
-    if (now - node.getLastReadingTime() < kReadingIntervalMs)
+    if (now - node.getLastRestartTime() < kSensorSettlingDelayMs)
     {
         return;
     }

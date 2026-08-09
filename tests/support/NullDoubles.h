@@ -64,6 +64,11 @@ namespace
         {
             return false;
         }
+
+        bool setTemperatureOffset(float) override
+        {
+            return true;
+        }
     };
 
     class NullMeasurementStore : public MeasurementStore

@@ -29,7 +29,6 @@ void ReadingState::process(Node& node)
 
     measurement.timestampUnixMillis = node.getClock().nowUnixMillis();
     node.setMeasurement(measurement);
-    node.setLastReadingTime(measurement.timestampUnixMillis);
     char loggingInfo[128];
     std::snprintf(loggingInfo, sizeof(loggingInfo),
                   "Measurement: { timestampUnixMillis: %llu, co2Ppm: %u, temperatureCelsius: %.2f, humidityPercent: %.2f}",

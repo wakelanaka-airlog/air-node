@@ -66,6 +66,18 @@ bool Scd41Sensor::readMeasurement(Measurement& measurement)
     return false;
 }
 
+// Sensor must be in idle mode (i.e. after stopPeriodicMeasurement) for this to take effect.
+bool Scd41Sensor::setTemperatureOffset(float offsetCelsius)
+{
+    const uint16_t word = static_cast<uint16_t>(offsetCelsius * 65536.f / 175.f);
+    const uint8_t data[] = {static_cast<uint8_t>(word >> 8), static_cast<uint8_t>(word & 0xFF)};
+    const uint8_t command[] = {0x24, 0x1d, data[0], data[1], computeCrc8(data, sizeof(data))};
+    const bool result = bus_.write(i2cAddress, command, sizeof(command));
+
+    delay_.delayMs(1);
+    return result;
+}
+
 // Copied from SCD41 datasheet
 uint8_t Scd41Sensor::computeCrc8(const uint8_t* data, uint16_t count)
 {
