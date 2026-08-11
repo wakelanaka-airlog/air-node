@@ -31,9 +31,6 @@ namespace
     constexpr const char* kTag = "app_main";
     constexpr uint32_t kWifiConnectTimeoutMs = 30000;
 
-    // SCD41 low-power periodic mode samples every ~30s; sized to survive a
-    // 12-hour (overnight) MQTT/WiFi outage before the oldest backlogged
-    // reading gets overwritten - see README.md's Measurement behavior section.
     constexpr uint32_t kScd41ReadingIntervalSeconds = 30;
     constexpr uint32_t kOvernightOutageSurvivalHours = 12;
     constexpr std::size_t kMeasurementStoreCapacity =
@@ -74,8 +71,8 @@ extern "C" void app_main()
     static Esp32Delay delay{};
     static Scd41Sensor scd41Sensor{i2cBus, delay};
 
-    const std::string topic = std::string("wakelanaka-airlog/air-node/") + CONFIG_NODE_ROOM + "/measurement";
-    static MqttPublisher publisher{CONFIG_MQTT_BROKER_URI, CONFIG_MQTT_USERNAME, CONFIG_MQTT_PASSWORD, topic};
+    static MqttPublisher publisher{CONFIG_MQTT_BROKER_URI, CONFIG_MQTT_USERNAME, CONFIG_MQTT_PASSWORD,
+                                    CONFIG_NODE_ROOM};
 
     static InMemoryMeasurementStore measurementStore{kMeasurementStoreCapacity};
 

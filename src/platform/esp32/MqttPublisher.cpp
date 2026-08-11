@@ -1,15 +1,23 @@
 #include "MqttPublisher.h"
 
+#include <cstring>
+
+#include "mqtt/AirNodeTopic.h"
 #include "mqtt/MeasurementPayload.h"
 
 namespace
 {
     constexpr uint32_t kPublishAckTimeoutMs = 5000;
+    constexpr const char* kOnlinePayload = "online";
+    constexpr const char* kOfflinePayload = "offline";
+    constexpr int kStatusQos = 1;
+    constexpr int kKeepaliveSeconds = 15;
 }
 
 MqttPublisher::MqttPublisher(const char* brokerUri, const char* username, const char* password,
-                             std::string topic)
-    : topic_{std::move(topic)}
+                             const std::string& room)
+    : topic_{AirNodeTopic::measurementTopic(room)}
+    , statusTopic_{AirNodeTopic::statusTopic(room)}
 {
     publishAcked_ = xSemaphoreCreateBinary();
 
@@ -17,6 +25,12 @@ MqttPublisher::MqttPublisher(const char* brokerUri, const char* username, const 
     mqttConfig.broker.address.uri = brokerUri;
     mqttConfig.credentials.username = username;
     mqttConfig.credentials.authentication.password = password;
+    mqttConfig.session.keepalive = kKeepaliveSeconds;
+    mqttConfig.session.last_will.topic = statusTopic_.c_str();
+    mqttConfig.session.last_will.msg = kOfflinePayload;
+    mqttConfig.session.last_will.msg_len = 0; // 0 -> broker uses strlen(msg)
+    mqttConfig.session.last_will.qos = kStatusQos;
+    mqttConfig.session.last_will.retain = true;
 
     client_ = esp_mqtt_client_init(&mqttConfig);
     esp_mqtt_client_register_event(client_, MQTT_EVENT_ANY, &MqttPublisher::handleMqttEvent, this);
@@ -37,6 +51,7 @@ void MqttPublisher::handleMqttEvent(void* handlerArgs, esp_event_base_t, int32_t
     {
     case MQTT_EVENT_CONNECTED:
         self->connected_ = true;
+        self->publishOnlineStatus();
         break;
     case MQTT_EVENT_DISCONNECTED:
         self->connected_ = false;
@@ -80,11 +95,13 @@ bool MqttPublisher::publish(const Measurement& measurement)
     const bool acked = xSemaphoreTake(publishAcked_, pdMS_TO_TICKS(kPublishAckTimeoutMs)) == pdTRUE;
     if (!acked)
     {
-        // Don't leave a timed-out id sitting in pendingMsgId_: MQTT packet
-        // ids get reused over a node's lifetime, and a late ack for this
-        // message arriving after we've already given up could otherwise be
-        // misattributed to a future, unrelated publish.
         pendingMsgId_ = -1;
     }
     return acked;
+}
+
+void MqttPublisher::publishOnlineStatus()
+{
+    esp_mqtt_client_publish(client_, statusTopic_.c_str(), kOnlinePayload,
+                             static_cast<int>(std::strlen(kOnlinePayload)), kStatusQos, true);
 }
