@@ -15,5 +15,6 @@
 
 .idea/
 build/
+build.living_room/
 
 CLAUDE.md

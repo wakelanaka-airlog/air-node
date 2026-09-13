@@ -22,8 +22,6 @@ public:
     bool read(uint8_t address, uint8_t* buffer, size_t length) override;
 
 private:
-    // Returns nullptr if the device could not be added (e.g. the bus itself
-    // failed to initialize, or the device-add call failed).
     i2c_master_dev_handle_t getOrAddDevice(uint8_t address);
 
     Logger& logger_;

@@ -66,7 +66,6 @@ bool Scd41Sensor::readMeasurement(Measurement& measurement)
     return false;
 }
 
-// Sensor must be in idle mode (i.e. after stopPeriodicMeasurement) for this to take effect.
 bool Scd41Sensor::setTemperatureOffset(float offsetCelsius)
 {
     const uint16_t word = static_cast<uint16_t>(offsetCelsius * 65536.f / 175.f);

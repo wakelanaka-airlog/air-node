@@ -22,7 +22,7 @@ public:
 
 private:
     static void handleMqttEvent(void* handlerArgs, esp_event_base_t base, int32_t eventId, void* eventData);
-    void publishOnlineStatus();
+    void publishOnlineStatus() const;
 
     esp_mqtt_client_handle_t client_;
     std::string topic_;

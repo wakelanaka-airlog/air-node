@@ -2,7 +2,7 @@
 
 namespace
 {
-    constexpr const char* kTopicPrefix = "wakelanaka-airlog/air-node/";
+    constexpr auto kTopicPrefix = "wakelanaka-airlog/air-node/";
 }
 
 std::string AirNodeTopic::measurementTopic(const std::string& room)

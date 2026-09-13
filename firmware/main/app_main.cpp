@@ -20,24 +20,24 @@
 #include "logging/FilteringLogger.h"
 #include "storage/InMemoryMeasurementStore.h"
 
-#ifdef CONFIG_NODE_DEVELOPMENT_MODE
-constexpr bool developmentMode = true;
-#else
-constexpr bool developmentMode = false;
-#endif
 
 namespace
 {
-    constexpr const char* kTag = "app_main";
-    constexpr uint32_t kWifiConnectTimeoutMs = 30000;
+#ifdef CONFIG_NODE_DEVELOPMENT_MODE
+    constexpr bool developmentMode = true;
+#else
+    constexpr bool developmentMode = false;
+#endif
+    constexpr auto kTag = "app_main";
+    constexpr uint16_t kWifiConnectTimeoutMs = 30000;
 
-    constexpr uint32_t kScd41ReadingIntervalSeconds = 30;
-    constexpr uint32_t kOvernightOutageSurvivalHours = 12;
+    constexpr uint8_t kScd41ReadingIntervalSeconds = 30;
+    constexpr uint8_t kOvernightOutageSurvivalHours = 12;
     constexpr std::size_t kMeasurementStoreCapacity =
         kOvernightOutageSurvivalHours * 3600 / kScd41ReadingIntervalSeconds;
 }
 
-extern "C" void app_main()
+extern "C" [[noreturn]] void app_main()
 {
     esp_err_t nvsResult = nvs_flash_init();
     if (nvsResult == ESP_ERR_NVS_NO_FREE_PAGES || nvsResult == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -57,7 +57,7 @@ extern "C" void app_main()
     static Esp32WifiStation wifiStation(CONFIG_WIFI_SSID, CONFIG_WIFI_PASSWORD);
     if (!wifiStation.waitUntilConnected(kWifiConnectTimeoutMs))
     {
-        ESP_LOGE(kTag, "WiFi did not connect within %lu ms - halting, not starting the node",
+        ESP_LOGE(kTag, "WiFi did not connect within %lu ms - halting the node",
                  static_cast<unsigned long>(kWifiConnectTimeoutMs));
         abort();
     }
@@ -71,8 +71,10 @@ extern "C" void app_main()
     static Esp32Delay delay{};
     static Scd41Sensor scd41Sensor{i2cBus, delay};
 
-    static MqttPublisher publisher{CONFIG_MQTT_BROKER_URI, CONFIG_MQTT_USERNAME, CONFIG_MQTT_PASSWORD,
-                                    CONFIG_NODE_ROOM};
+    static MqttPublisher publisher{
+        CONFIG_MQTT_BROKER_URI, CONFIG_MQTT_USERNAME, CONFIG_MQTT_PASSWORD,
+        CONFIG_NODE_ROOM
+    };
 
     static InMemoryMeasurementStore measurementStore{kMeasurementStoreCapacity};
 

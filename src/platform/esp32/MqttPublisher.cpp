@@ -8,8 +8,8 @@
 namespace
 {
     constexpr uint32_t kPublishAckTimeoutMs = 5000;
-    constexpr const char* kOnlinePayload = "online";
-    constexpr const char* kOfflinePayload = "offline";
+    constexpr auto kOnlinePayload = "online";
+    constexpr auto kOfflinePayload = "offline";
     constexpr int kStatusQos = 1;
     constexpr int kKeepaliveSeconds = 15;
 }
@@ -17,7 +17,7 @@ namespace
 MqttPublisher::MqttPublisher(const char* brokerUri, const char* username, const char* password,
                              const std::string& room)
     : topic_{AirNodeTopic::measurementTopic(room)}
-    , statusTopic_{AirNodeTopic::statusTopic(room)}
+      , statusTopic_{AirNodeTopic::statusTopic(room)}
 {
     publishAcked_ = xSemaphoreCreateBinary();
 
@@ -28,7 +28,7 @@ MqttPublisher::MqttPublisher(const char* brokerUri, const char* username, const 
     mqttConfig.session.keepalive = kKeepaliveSeconds;
     mqttConfig.session.last_will.topic = statusTopic_.c_str();
     mqttConfig.session.last_will.msg = kOfflinePayload;
-    mqttConfig.session.last_will.msg_len = 0; // 0 -> broker uses strlen(msg)
+    mqttConfig.session.last_will.msg_len = 0;
     mqttConfig.session.last_will.qos = kStatusQos;
     mqttConfig.session.last_will.retain = true;
 
@@ -100,8 +100,8 @@ bool MqttPublisher::publish(const Measurement& measurement)
     return acked;
 }
 
-void MqttPublisher::publishOnlineStatus()
+void MqttPublisher::publishOnlineStatus() const
 {
     esp_mqtt_client_publish(client_, statusTopic_.c_str(), kOnlinePayload,
-                             static_cast<int>(std::strlen(kOnlinePayload)), kStatusQos, true);
+                            static_cast<int>(std::strlen(kOnlinePayload)), kStatusQos, true);
 }

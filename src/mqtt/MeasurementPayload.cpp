@@ -2,9 +2,6 @@
 
 #include <cstdio>
 
-// Room isn't included here - it's already the MQTT topic's wildcard segment
-// (wakelanaka-airlog/air-node/<room>/measurement), and the collector reads
-// it from there instead, so it's not asserted twice on the wire.
 bool formatMeasurementPayload(const Measurement& measurement, char* buffer, const std::size_t bufferSize,
                                std::size_t& outLength)
 {
